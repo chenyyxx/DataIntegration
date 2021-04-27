@@ -40,7 +40,7 @@ class DataConverter:
                 Se_col_name:"Se", 
                 P_col_name:"P"
             },axis="columns")
-        dtype = dict(Chr=str, BP='Int64', SNP=str, A1=str, A2=str, EAF=float, Beta=float, Se=float, P=float)
+        dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
         res = res.astype(dtype)
         return res[:100]
 
@@ -121,8 +121,34 @@ class DataConverter:
             result = result.dropna(subset=[new_chr_name]).reset_index(drop=True)
         return result
 
-    def add_rsid(self):
-        pass
+    def add_rsid(self, df, data):
+        added_rs_id = []
+        for i in range(df.shape[0]):
+            chrom = df.iloc[i]["Chr"]
+            pos = df.iloc[i]["BP"]
+            rs_id = df.iloc[i]["SNP"]
+            key = (chrom, pos)
+            if key in data:
+                raw_string = data[key]
+                parsed_string = raw_string.split('\t')
+                data_rs_id = parsed_string[0] 
+                if pd.isna(rs_id):
+                    added_rs_id.append(data_rs_id)
+                    # print("find none")
+                elif rs_id == data_rs_id:
+                    added_rs_id.append(rs_id)
+                    # print("same")
+                else: # find different rsid in dnpsnp153, update with new
+                    added_rs_id.append(data_rs_id)
+                    # print("different")
+            else:
+                added_rs_id.append("key not found")
+                # print("key not found")
+        result = df.assign(added_rs_id = added_rs_id)
+        print(result)
+        return result
+
+
     
     # helper function to connect to gene browser database
     def connect_db(self):
@@ -163,22 +189,8 @@ class DataConverter:
                 raw_string = dat[-1][2]
                 key = (chrom[3], reference_end)
                 result[key] = raw_string
-                # temp = [chrom[3], reference_end, raw_string]
-                # result.append(temp)
-        # data = pd.DataFrame(result, columns=["Chr", "BP", "raw_string"])
-        # dtype = dict(Chr="string", BP='Int64', raw_string="string")
-        # data = data.astype(dtype)
-        # print(data)
-        # res = pd.merge(df, data, on=["Chr", "BP"], how="left")
-        # res_dtype = dict(Chr="string", BP='Int64', SNP="string", A1=str, A2=str, EAF=float, Beta=float, Se=float, P=float, raw_string="string")
-        # print(res)
-        # print(res.dtypes)
-        print(result)
+        # print(result)
         return result
-
-    def get_information(self, string, col_num):
-        parsed_string = string.split("\t")
-        return parsed_string[col_num]
 
     def flip(self, allele):
         new_allele = ""
@@ -237,13 +249,13 @@ class DataConverter:
             else: # tri-alleic snps -> mark
                 flipped_A1.append("3")
                 flipped_A2.append("3")
-        print(flipped_A1)
-        print(len(flipped_A1))
-        print(flipped_A2)
-        print(len(flipped_A2))
+        # print(flipped_A1)
+        # print(len(flipped_A1))
+        # print(flipped_A2)
+        # print(len(flipped_A2))
         result = df.assign(new_A1 = flipped_A1)
         result = result.assign(new_A2 = flipped_A2)
-        print(result)
+        # print(result)
         return result
 
         # for i in range(data.shape[0]):
@@ -350,7 +362,8 @@ if __name__ == "__main__":
     # print(result_keep.query('hg19_pos.isnull()', engine='python').reset_index(drop=True))
 
     data = converter.query_data(df)
-    converter.flip_strand(df, data)
+    print(converter.flip_strand(df, data))
+    converter.add_rsid(df, data)
 
 
 
