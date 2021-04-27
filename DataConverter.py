@@ -16,15 +16,6 @@ class DataConverter:
         self.output_verion = output_version
         self.lo = LiftOver(input_version, output_version)
 
-    # def read_data_1(self):
-    #     df = pd.read_csv(self.input_path, compression='gzip', header=0, sep='\t',quotechar='"')
-    #     result = df.loc[:,["#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval"]]
-    #     res = result.rename({"#chrom":"Chr","pos":"BP", "rsids":"SNP", "alt":"A1", "ref":"A2", "maf":"EAF", "beta":"Beta", "sebeta":"Se", "pval":"P"},axis="columns")
-    #     dtype = dict(Chr=str, BP=int)
-    #     res = res.astype(dtype)
-    #     return res[:1000]
-    #     # return df
-
     def read_data(self, input_path, separate_by, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name):
         raw_df = pd.read_csv(self.input_path, compression='gzip', header=0, sep=separate_by,quotechar='"')
         result = raw_df.loc[:,[Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name]]
@@ -42,51 +33,22 @@ class DataConverter:
             },axis="columns")
         dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
         res = res.astype(dtype)
-        return res[:100]
+        return res[:1000]
 
-    def process_data(self, df):
-        # print(df)
-        cols = list(df.columns)
-        modified_output = pd.DataFrame(columns=cols)
-        unconvertible_output = pd.DataFrame(columns=cols)
-        # num_containing_rsids_modified = 0
-        # num_containing_rsids_unconvertible = 0
-        for i in range(df.shape[0]):
-            chrom = "chr" + str(df.iloc[i]["Chr"])
-            # print(chrom)
-            pos = df.iloc[i]["BP"]
-            # row = df[i:i+1]
-            modified = lo.convert_coordinate(chrom, pos)
-            row = df.iloc[i]
-            if modified:
-                # if pd.isna(row["SNP"]):
-                #     num_containing_rsids_modified += 1
-                new_chrom = modified[0][0]
-                new_pos = modified[0][1]
-                row["Chr"] = new_chrom[3:]
-                row["BP"] = new_pos
-                modified_output = modified_output.append(row, ignore_index=True)
-            else:
-                # print(pd.isna(row["SNP"]))
-                # if pd.isna(row["SNP"]):
-                #     num_containing_rsids_unconvertible += 1
-                modified_output = modified_output.append(pd.Series(), ignore_index=True)
-                unconvertible_output = unconvertible_output.append(row, ignore_index=True)
-        # print(num_containing_rsids)
-        return [modified_output, unconvertible_output]
     
     def save_data(self, df, prefix):
         name = self.input_path.split(".")[0]
+        print(name)
 
-        df_out = self.output_path + "/" + prefix + "_" + name +".csv"
-        df.to_csv(df_out)
+        df_out = self.output_path + "/" + prefix + "_" + name +".gz"
+        df.to_csv(df_out, compression='gzip')
 
-        meta_file_name = self.output_path + "/" + prefix + "_"+ name +"_meta.txt"
-        buf = io.StringIO()
-        df.info(buf = buf)
-        s= buf.getvalue()
-        with open(meta_file_name, "w") as meta:
-            meta.write(s)
+        # meta_file_name = self.output_path + "/" + prefix + "_"+ name +"_meta.txt"
+        # buf = io.StringIO()
+        # df.info(buf = buf)
+        # s= buf.getvalue()
+        # with open(meta_file_name, "w") as meta:
+        #     meta.write(s)
 
     def __lift_over_basic(self, df, chr_col_name, pos_col_name):
         cols = list(df.columns)
@@ -145,7 +107,7 @@ class DataConverter:
                 added_rs_id.append("key not found")
                 # print("key not found")
         result = df.assign(added_rs_id = added_rs_id)
-        print(result)
+        # print(result)
         return result
 
 
@@ -362,8 +324,13 @@ if __name__ == "__main__":
     # print(result_keep.query('hg19_pos.isnull()', engine='python').reset_index(drop=True))
 
     data = converter.query_data(df)
+    # test ccall for flip_strand()
     print(converter.flip_strand(df, data))
-    converter.add_rsid(df, data)
+    # test call for add_rsid()
+    print(converter.add_rsid(df, data))
+
+    res = converter.add_rsid(df, data)
+    converter.save_data(res, "add_rsid")
 
 
 
