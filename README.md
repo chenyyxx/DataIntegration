@@ -17,3 +17,70 @@ such as remove SNPs based on hwe pvalue or imputation quality or MAF, delete dup
 6. sort by chr and BP in the output file
 7. write out as txt.gz
 use Python to output gz directly and index file if possible
+
+
+# Dependencies
+1. pyliftover
+    * `pip install pyliftover`
+2. numpy
+    * `pip install numpy`
+3. pandas
+    * `pip install pandas`
+4. mysql
+    * `pip install mysql-connector-python`
+5. pyBigWig
+    * `pip install pyBigWig`
+
+
+
+
+
+# Usage
+To use the pacakge, please follow the steps below:
+1. install dependencies mentioned above
+2. Please make sure the system have mysql isntalled
+3. Git clone/ download this repository
+4. cd into the directory
+5. In python, get started with the following steps
+    - ```python 
+        from . import DataConverter
+      ```
+    - Setting inital parameters: 
+        * input_path
+        * output_path
+        * input_format (e.g. "hg19")
+        * output_format (e.g. "hg38")
+    - Create instance of the class with the following code chunk
+        - ```python 
+            converter = DataConverter(input_path, output_path, input_format,output_format)
+        ```
+    - Start using the provided functions, e.g.: 
+        - ```python 
+            df = converter.read_data(input_path, '\t', "#chrom","pos", "rsids" ,"alt", "ref", "maf",    "beta", "sebeta", "pval")
+            print(df)
+        ```
+
+
+# Functions Provided
+
+### Read Data
+
+### Save Data
+
+### Flip Over
+
+### Add Rsid's
+
+### Flip Strand
+
+### Align Effect Allele and Effect Size between Two Datasets
+
+**Functions to be Implemented**
+### Insert/ Filter/ Delete
+
+### Deduplicate
+
+### Create Tbi Index
+
+### Query UCSC Database (for previous dnSNP version)
+
