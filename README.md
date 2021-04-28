@@ -64,16 +64,45 @@ To use the pacakge, please follow the steps below:
 # Functions Provided
 
 ### Read Data
-
+Example:
+```python
+    df = converter.read_data(input_path, '\t', "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
+    print(df)
+```
 ### Save Data
+Example:
+```python
+    data = converter.query_data(df)
+    res = converter.add_rsid(df, data)
+    converter.save_data(res, "add_rsid")
+```
 
-### Flip Over
+### Lift Over
+Example:
+```python
+    converter.liftover(df, "Chr", "BP", )
+```
 
 ### Add Rsid's
+Example:
+```python
+    data = converter.query_data(df)
+    converter.add_rsid(df, data)
+```
 
 ### Flip Strand
+Example:
+```python
+    data = converter.query_data(df)
+    converter.flip_strand(df, data)
+```
 
 ### Align Effect Allele and Effect Size between Two Datasets
+Example:
+```python
+    print(df)
+    print(converter.swap_effect_allele(df))
+```
 
 **Functions to be Implemented**
 ### Insert/ Filter/ Delete
