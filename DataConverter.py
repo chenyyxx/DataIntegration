@@ -293,8 +293,46 @@ class DataConverter:
         df.to_csv(output_path, index=False, compression='gzip')
         print(output_path)
 
-    def align_allele_effect_size(self):
-        pass
+    # assuming data set has no problem with consistent effect allele
+    # assuming both data set belongs to the same genome version
+    def align_allele_effect_size(self, reference_data, process_data):
+        reference = reference_data[["Chr", "BP", "A1", "Beta"]].rename({"A1":"reference_A1", "Beta":"reference_Beta"}, axis="columns")
+        process = process_data[["Chr", "BP", "A1", "Beta"]].rename({"A1":"process_A1", "Beta":"process_Beta"}, axis="columns")
+        merge_table = pd.merge(process, reference, by=["Chr, Pos"], how="inner")
+        first_ref_A1 = merge_table.iloc[0]["reference_A1"]
+        first_proc_A1 = merge_table.iloc[0]["process_A1"]
+        if first_ref_A1 == first_proc_A1: # check the rest to make sure all equal
+            for i in range(1, merge_table.shape[0]):
+                ref_A1 = merge_table.iloc[i]["reference_A1"]
+                proc_A1 = merge_table.iloc[i]["process_A1"]
+                if ref_A1 != proc_A1:
+                    print("data effect allele is not consistent")
+                    return
+            # all consitent: no need to change
+            print("two data sets have same effect allele, no need to change")
+            return
+
+        else: # check the rest to make sure all not equal
+            for i in range(1, merge_table.shape[0]):
+                ref_A1 = merge_table.iloc[i]["reference_A1"]
+                proc_A1 = merge_table.iloc[i]["process_A1"]
+                if ref_A1 == proc_A1:
+                    print("data effect allele is not consistent")
+                    return
+            # all consitent: need to change size 
+            result = self.swap_effect_allele(process_data)
+            return result
+    
+
+    def swap_effect_allele(self, df):
+        col_list = list(df)
+        col_list[3], col_list[4] = col_list[4], col_list[3]
+        df.columns = col_list
+        df["Beta"] -= 1.0
+        df = df[["Chr", "BP", "SNP", "A1", "A2", "EAF", "Beta", "Se", "P"]]
+        return df
+
+
 
 
 
@@ -329,8 +367,13 @@ if __name__ == "__main__":
     # test call for add_rsid()
     print(converter.add_rsid(df, data))
 
-    res = converter.add_rsid(df, data)
-    converter.save_data(res, "add_rsid")
+    # test call for save_data()
+    # res = converter.add_rsid(df, data)
+    # converter.save_data(res, "add_rsid")
+
+    # test call for swap effect allele
+    print(df)
+    print(converter.swap_effect_allele(df))
 
 
 
