@@ -9,12 +9,17 @@ import pyBigWig
 
 # class
 class DataConverter:
+
+    # Class Constructor
+
     def __init__(self, input_path, output_path, input_version, output_version):
         self.input_path = input_path
         self.output_path = output_path
         self.input_version = input_version
         self.output_verion = output_version
         self.lo = LiftOver(input_version, output_version)
+
+    # function to read data for process
 
     def read_data(self, input_path, separate_by, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name):
         raw_df = pd.read_csv(self.input_path, compression='gzip', header=0, sep=separate_by,quotechar='"')
@@ -35,7 +40,8 @@ class DataConverter:
         res = res.astype(dtype)
         return res[:1000]
 
-    
+    # function to output data and save as gzip
+
     def save_data(self, df, prefix):
         name = self.input_path.split(".")[0]
         print(name)
@@ -43,12 +49,7 @@ class DataConverter:
         df_out = self.output_path + "/" + prefix + "_" + name +".gz"
         df.to_csv(df_out, compression='gzip')
 
-        # meta_file_name = self.output_path + "/" + prefix + "_"+ name +"_meta.txt"
-        # buf = io.StringIO()
-        # df.info(buf = buf)
-        # s= buf.getvalue()
-        # with open(meta_file_name, "w") as meta:
-        #     meta.write(s)
+    # helper function for liftover
 
     def __lift_over_basic(self, df, chr_col_name, pos_col_name):
         cols = list(df.columns)
@@ -69,10 +70,14 @@ class DataConverter:
         temp_df.drop_duplicates(subset = ['Chr','BP'], inplace=True)
         temp_df = temp_df.astype(dtype)
         return temp_df
+    
+    # helper function for liftover
 
     def __lift_over_merge(self, df, reference_table):
         result = pd.merge(reference_table, df, on=["Chr", "BP"], how="right")
         return result
+
+    # function for liftover
 
     def lift_over(self, df, chr_col_name, pos_col_name, keep_unconvertible=False):
         reference_table = self.__lift_over_basic(df, chr_col_name, pos_col_name)
@@ -82,6 +87,8 @@ class DataConverter:
             new_pos_name = reference_table.columns[3]
             result = result.dropna(subset=[new_chr_name]).reset_index(drop=True)
         return result
+
+    # function to fill in missing rsid
 
     def add_rsid(self, df, data):
         added_rs_id = []
@@ -111,30 +118,7 @@ class DataConverter:
         return result
 
 
-    
-    # helper function to connect to gene browser database
-    def connect_db(self):
-        try:
-            db = mysql.connector.connect(
-                user="genome",
-                host="genome-mysql.soe.ucsc.edu",
-                database="hg38",
-                port="3306")
-            return db
-        except:
-            print("connection failed, try another port")
-
-    def query_db(self):
-        pass
-
-    def select(self):
-        pass
-
-    def insert(self):
-        pass
-
-    def delete(self):
-        pass
+    # helper function for query dbsnp153 from USCS genome broswer
     
     def query_data(self, df):
         bb = pyBigWig.open("http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb")
@@ -154,6 +138,8 @@ class DataConverter:
         # print(result)
         return result
 
+    # helper function for flipping strand
+
     def flip(self, allele):
         new_allele = ""
         if allele == "A":
@@ -165,6 +151,8 @@ class DataConverter:
         if allele == "G":
             new_allele = "C"
         return new_allele
+
+    # function to flip strand
 
     def flip_strand(self, df, data):
         flipped_A1 = []
@@ -220,81 +208,12 @@ class DataConverter:
         # print(result)
         return result
 
-        # for i in range(data.shape[0]):
-        #     raw_string = data.iloc[i]["raw_string"]
-        #     A1 = df.iloc[i]["A1"]
-        #     A2 = df.iloc[i]["A2"]
-        #     if raw_string != None:
-        #         cur_set = {A1, A2}
-        #         print(raw_string)
-        #         parsed_string = raw_string.str.split('\t')
-        #         data_a1=parsed_string[1].split(',')
-        #         data_a2=parsed_string[3].split(',')
-        #         for i in data_a1:
-        #             if i != '':
-        #                 cur_set.add(i)
-        #         for i in data_a2:
-        #             if i != '':
-        #                 cur_set.add(i)
-        #         print(cur_set)
-                # set_len = len(cur_set)
-                # if set_len
-                
-                
 
+    # functions to align effect allele and effect size between two datasets
 
+    ## assuming data set has no problem with consistent effect allele
+    ## assuming both data set belongs to the same genome version
 
-        #     chrom = "chr" + str(df.iloc[i]["Chr"])
-        #     end_pos = df.iloc[i]["BP"]
-        #     A1 = df.iloc[i]["A1"]
-        #     A2 = df.iloc[i]["A2"]
-        #     start_pos =end_pos - 1
-        #     dat = bb.entries(chrom, start_pos, end_pos)
-        #     print(dat)
-        #     reference_start = dat[-1][0]
-        #     reference_end = dat[-1][1]
-        #     raw_string = dat[-1][2]
-        #     temp = raw_string.split('\t')
-        #     result.append(temp)
-        #     cur_set = {A1, A2}
-        #     bb_a1 = temp[1].split(',')
-        #     bb_a2 = temp[3].split(',')
-        #     for i in bb_a1:
-        #         if i != '':
-        #             cur_set.add(i)
-        #     for j in bb_a2:
-        #         if j != '':
-        #             cur_set.add(j)
-        #     print(cur_set)
-        #     res = 0
-        #     if len(cur_set) == 2:
-        #         # Do nothing, strand correct
-        #         pass
-        #     elif len(cur_set) ==3:
-        #         # Tri-allelic snps
-        #         res = 1
-        #     elif len(cur_set) ==4:
-        #         # Flip Strand
-        #         pass
-        #     else:
-        #         # other cases, mark
-        #         pass
-        # data = pd.DataFrame(result)
-        # print(data)
-
-    def deduplicate(self):
-        pass
-
-    def zip_data(self, df):
-        file_name = self.input_path.split(".")
-        print(file_name)
-        output_name = file_name + ".gz"
-        output_path = self.output_path + "/" +output_name
-        df.to_csv(output_path, index=False, compression='gzip')
-        print(output_path)
-
-    # assuming data set has no problem with consistent effect allele
-    # assuming both data set belongs to the same genome version
     def align_allele_effect_size(self, reference_data, process_data):
         reference = reference_data[["Chr", "BP", "A1", "Beta"]].rename({"A1":"reference_A1", "Beta":"reference_Beta"}, axis="columns")
         process = process_data[["Chr", "BP", "A1", "Beta"]].rename({"A1":"process_A1", "Beta":"process_Beta"}, axis="columns")
@@ -323,6 +242,7 @@ class DataConverter:
             result = self.swap_effect_allele(process_data)
             return result
     
+    # helper function to swap effect allele and align effect size
 
     def swap_effect_allele(self, df):
         col_list = list(df)
@@ -333,7 +253,46 @@ class DataConverter:
         return df
 
 
+        
+    # ---------------------------------------------------------------------------------------------
+    # functions to be implemented
 
+    def select(self):
+        pass
+
+    def insert(self):
+        pass
+
+    def delete(self):
+        pass
+    
+    def deduplicate(self):
+        pass
+
+    def create_tbi_index(self, df):
+        pass
+
+    def query_db(self):
+        pass
+
+    # ---------------------------------------------------------------------------------------------
+    
+    # unsued functions 
+    # helper function to connect to gene browser database
+    def connect_db(self):
+        try:
+            db = mysql.connector.connect(
+                user="genome",
+                host="genome-mysql.soe.ucsc.edu",
+                database="hg38",
+                port="3306")
+            return db
+        except:
+            print("connection failed, try another port")
+
+    
+    
+    # ---------------------------------------------------------------------------------------------
 
 
         
@@ -342,77 +301,33 @@ class DataConverter:
 
 
 if __name__ == "__main__":
+    # setting parameters: examples
     input_path = "finngen_R4_AB1_ARTHROPOD.gz"
     output_path = "result"
     input_format = "hg38"
     output_format = "hg19"
-    # lo = LiftOver(input_format, output_format)
+
+    # create class instance
     converter = DataConverter(input_path, output_path, input_format,output_format)
     # df = converter.read_data()
+
+    # test call for read_data()
     df = converter.read_data(input_path, '\t', "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
     print(df)
 
-
-
-    # print(df.dtypes)
-    # result_keep=converter.lift_over(df, "Chr", "BP", True)
-    # print(result_keep)
-    # result_not_keep =converter.lift_over(df, "Chr", "BP")
-    # print(result_not_keep)
-    # print(result_keep.query('hg19_pos.isnull()', engine='python').reset_index(drop=True))
-
+    # test call for query_data()
     data = converter.query_data(df)
+    
     # test ccall for flip_strand()
     print(converter.flip_strand(df, data))
+    
     # test call for add_rsid()
     print(converter.add_rsid(df, data))
 
     # test call for save_data()
-    # res = converter.add_rsid(df, data)
-    # converter.save_data(res, "add_rsid")
+    res = converter.add_rsid(df, data)
+    converter.save_data(res, "add_rsid")
 
     # test call for swap effect allele
     print(df)
     print(converter.swap_effect_allele(df))
-
-
-
-
-    # print(result.dtypes)
-    # m = converter.lift_over_merge(df, result)
-    # print(m)
-    # print(m.dtypes)
-
-    # left = df.groupby(['Chr','BP']).size().to_frame(name = 'size').reset_index()
-    # right = result.groupby(['Chr','BP']).size().to_frame(name = 'size').reset_index()
-    # print(left)
-    # print(left["size"].unique())
-    # print(sum(left["size"]))
-    # print(right)
-    # print(left.query('size != 1'))
-    # print(df.query('Chr == "1" & BP == 788757'))
-    # print(result.query('Chr == "1" & BP == 788757'))
-
-
-
-    # print(m["_merge"].unique)
-    # print(result['_merge'].unique())
-    # result = converter.process_data(df)
-    # converter.save_data(result[0], "modified")
-    # converter.save_data(result[1], "unconvertible")
-
-
-    # output_path = "result"
-    # input_format = "hg38"
-    # output_format = "hg19"
-    # lo = LiftOver(input_format, output_format)
-    # all_file = os.listdir()
-    # for f in all_file:
-    #     print(f)
-    #     input_path = f
-    #     converter = DataConverter(input_path, output_path, lo)
-    #     df = converter.read_data()
-    #     # print(df)
-    #     result = converter.process_data(df)
-    #     converter.save_data(result[0], "modified")
-    #     converter.save_data(result[1], "unconvertible")
