@@ -14,12 +14,12 @@ class DataConverter:
 
     # Class Constructor
 
-    def __init__(self, input_path, output_path, input_version, output_version):
-        self.input_path = input_path
-        self.output_path = output_path
-        self.input_version = input_version
-        self.output_version = output_version
-        # self.lo = LiftOver(input_version, output_version) # TODO: do not create instance of lift over here
+    # def __init__(self, input_path, output_path, input_version, output_version):
+    #     self.input_path = input_path
+    #     self.output_path = output_path
+    #     self.input_version = input_version
+    #     self.output_version = output_version
+    #     # self.lo = LiftOver(input_version, output_version) # TODO: do not create instance of lift over here
 
     # function to filter only bi-allelic case
     def filter_bi_allelic(self, df, rest=False):
@@ -27,7 +27,10 @@ class DataConverter:
         result = []
         other_case = []
         columns = df.columns
-        for i in range(df.shape[0]):
+        for i in range(df.shape[0]):  
+            # TODO: instead of using range(), maybe try using itertuples() / zip() / zip + to_dict('list') to increase time efficiency
+            # These could be done for other functions that contain for loops as well.
+            print(i)
             A1 = df.iloc[i]["A1"]
             A2 = df.iloc[i]["A2"]
             row = list(df.iloc[i])
@@ -48,8 +51,25 @@ class DataConverter:
 
     # function to read data for process
 
-    def read_data(self, input_path, separate_by, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name):
-        raw_df = pd.read_csv(self.input_path, compression='gzip', header=0, sep=separate_by,quotechar='"')
+    def read_data(self, input_path, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name, separate_by="\t"):
+        """Example function with types documented in the docstring.
+
+        `PEP 484`_ type annotations are supported. If attribute, parameter, and
+        return types are annotated according to `PEP 484`_, they do not need to be
+        included in the docstring:
+
+        Args:
+            param1 (int): The first parameter.
+            param2 (str): The second parameter.
+
+        Returns:
+            bool: The return value. True for success, False otherwise.
+
+        .. _PEP 484:
+            https://www.python.org/dev/peps/pep-0484/
+
+        """
+        raw_df = pd.read_csv(input_path, compression='gzip', header=0, sep=separate_by,quotechar='"')
         print(raw_df)
         result = raw_df.loc[:,[Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name]]
         res = result.rename(
@@ -66,15 +86,15 @@ class DataConverter:
             },axis="columns")
         dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
         res = res.astype(dtype)
-        return res[:100000]
+        return res
 
     # function to output data and save as gzip
 
-    def save_data(self, df, prefix):
-        name = self.input_path.split(".")[0]
+    def save_data(self, input_path, output_path, df, prefix):
+        name = input_path.split(".")[0]
         print(name)
 
-        df_out = self.output_path + "/" + prefix + "_" + name +".gz"
+        df_out = output_path + "/" + prefix + "_" + name +".gz"
         df.to_csv(df_out, compression='gzip')
 
     # helper function for liftover
@@ -93,7 +113,7 @@ class DataConverter:
             chrom = "chr" + str(df.iloc[i][chr_col_name])
             pos =df.iloc[i][pos_col_name]
             modified = lo.convert_coordinate(chrom, pos)
-            print(i)
+            # print(i)
             if modified:
                 new_chrom = modified[0][0][3:]
                 new_pos = modified[0][1]
@@ -113,7 +133,8 @@ class DataConverter:
         return result
 
     # function for liftover
-
+    # the current lift over tool only get the chr + bp in new build version but leave the SNP and A1 A2 unchanged. 
+    # Should I also change the SNP and A1 A2 to match the new build version?
     def lift_over(self, df, lo_dict, chr_col_name, pos_col_name, keep_unconvertible=False):
         reference_table = self.__lift_over_basic(df, lo_dict ,chr_col_name, pos_col_name)
         result = self.__lift_over_merge(df, reference_table)
@@ -216,13 +237,7 @@ class DataConverter:
                 flipped_A1.append("3")
                 flipped_A2.append("3")
                 comment.append("Key not found")  
-                # TODO: these cases may be due to the dbquery return multiple strings, 
-                # and the current functions only return one, and the one that is return does not match the exact equry BP + Chr. 
-                # Therefore, nothing is return
-        # print(flipped_A1)
-        # print(len(flipped_A1))
-        # print(flipped_A2)
-        # print(len(flipped_A2))
+
         result = df.assign(new_A1 = flipped_A1)
         result = result.assign(new_A2 = flipped_A2)
         result = result.assign(comment = comment)
@@ -242,11 +257,12 @@ class DataConverter:
     def align_allele_effect_size(self, reference_data, process_data):
         reference = reference_data[["Chr", "BP", "A1", "Beta"]].rename({"A1":"reference_A1", "Beta":"reference_Beta"}, axis="columns")
         process = process_data[["Chr", "BP", "A1", "Beta"]].rename({"A1":"process_A1", "Beta":"process_Beta"}, axis="columns")
-        merge_table = pd.merge(process, reference, by=["Chr, Pos"], how="inner")
+        merge_table = pd.merge(process, reference, on=["Chr, BP"], how="inner")
         first_ref_A1 = merge_table.iloc[0]["reference_A1"]
         first_proc_A1 = merge_table.iloc[0]["process_A1"]
         if first_ref_A1 == first_proc_A1: # check the rest to make sure all equal
             for i in range(1, merge_table.shape[0]):
+                print(i)
                 ref_A1 = merge_table.iloc[i]["reference_A1"]
                 proc_A1 = merge_table.iloc[i]["process_A1"]
                 if ref_A1 != proc_A1:
@@ -258,6 +274,7 @@ class DataConverter:
 
         else: # check the rest to make sure all not equal
             for i in range(1, merge_table.shape[0]):
+                print(i)
                 ref_A1 = merge_table.iloc[i]["reference_A1"]
                 proc_A1 = merge_table.iloc[i]["process_A1"]
                 if ref_A1 == proc_A1:
@@ -273,7 +290,8 @@ class DataConverter:
         col_list = list(df)
         col_list[3], col_list[4] = col_list[4], col_list[3]
         df.columns = col_list
-        df["Beta"] -= 1.0
+        df["Beta"] = -1 * df["Beta"]
+        df["EAF"] = 1 - df["EAF"]
         df = df[["Chr", "BP", "SNP", "A1", "A2", "EAF", "Beta", "Se", "P"]]
         return df
 
@@ -282,8 +300,21 @@ class DataConverter:
     # ---------------------------------------------------------------------------------------------
     # functions to be implemented
 
-    def select(self):
+    def select(self, col, value):
         pass
+    # these can be done with df.query(), no need to write new function.
+    # can be put into doc directly
+
+    def sort_by_Chr(self, df):
+        def mixs(num):
+            try:
+                ele = int(num)
+                return (0, ele, '')
+            except ValueError:
+                return (1, num, '')
+        df.sort_values(by=["Chr", "BP"], key = mixs)
+        return df
+
 
     def insert(self):
         pass
@@ -344,18 +375,19 @@ if __name__ == "__main__":
     output_format = "hg38"
 
     # create class instance
-    converter = DataConverter(input_path, output_path, input_format,output_format)
+    # converter = DataConverter(input_path, output_path, input_format,output_format)
+    converter = DataConverter()
     # df = converter.read_data()
 
     # test call for read_data()
-    df = converter.read_data(input_path, '\t', "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
-    print(df)
+    df = converter.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
+    # print(df)
 
     # test call for filter_by_allelic()
     bi_allelic = converter.filter_bi_allelic(df)
-    other = converter.filter_bi_allelic(df, rest=True)
+    # other = converter.filter_bi_allelic(df, rest=True)
     print(bi_allelic)
-    print(other)
+    # print(other)
 
     # test call for create_lo()
     # lo_dict = converter.create_lo(input_format, output_format)
@@ -382,28 +414,37 @@ if __name__ == "__main__":
     # print(data)
     
     # test ccall for flip_strand()
-    flipped = converter.flip_strand(bi_allelic, dbSnp153, keep_all=True)
-    print(flipped)
-    # check cases
-    # print(flipped.query('new_A1 == "4"'))
-    print(flipped.query('new_A1 == "3"'))
-    print(flipped.query('new_A1 == "2"'))
-    print(flipped.query('new_A1 == "1"'))
-    flipped_not_keep = converter.flip_strand(bi_allelic, dbSnp153)
-    print(flipped_not_keep)
+    # flipped = converter.flip_strand(bi_allelic, dbSnp153, keep_all=True)
+    # print(flipped)
+    # # check cases
+    # # print(flipped.query('new_A1 == "4"'))
+    # print(flipped.query('new_A1 == "3"'))
+    # print(flipped.query('new_A1 == "2"'))
+    # print(flipped.query('new_A1 == "1"'))
+    # flipped_not_keep = converter.flip_strand(bi_allelic, dbSnp153)
+    # print(flipped_not_keep)
     
     
     # # test call for add_rsid()
-    # print(converter.add_rsid(bi_allelic, data))
+    # print(converter.add_rsid(bi_allelic, dbSnp153))
 
     # # test call for save_data()
     # res = converter.add_rsid(df, data)
-    # converter.save_data(res, "add_rsid")
+    # converter.save_data(input_path, output_path, res, "add_rsid")
 
     # # test call for swap effect allele
     # print(df)
     # print(converter.swap_effect_allele(df))
 
+    reference_path = "finngen_R4_AB1_ARTHROPOD.gz"
+    reference_df = converter.read_data(reference_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
+
+    referecence_bi_allelic = converter.filter_bi_allelic(reference_df)
+    # print(bi_allelic)
+    print(referecence_bi_allelic)
+    print("aligned result")
+    aligned = converter.align_allele_effect_size(referecence_bi_allelic, bi_allelic)
+    print(aligned)
 
 
     # -------------------------------------------------------

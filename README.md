@@ -43,7 +43,7 @@ To use the pacakge, please follow the steps below:
 4. cd into the directory
 5. In python, get started with the following steps
     - ```python 
-        from . import DataConverter
+        from DataConverter import DataConverter
       ```
     - Setting inital parameters: 
         * input_path
@@ -64,7 +64,29 @@ To use the pacakge, please follow the steps below:
 # Functions Provided
 
 ### Read Data
-Example:
+Description: This function reads the data to be processed and output it in a formatted way
+    
+Args:
+    input_path (str): the complete or relative path of the input data
+    Chr_col_name (str): the column name in the original data representing chromosome
+    BP_col_name (str): the column name in the original data representing base pair position
+    SNP_col_name (str): the column name in the original data representing rsID
+    A1_col_name (str): the column name in the original data representing effect allele
+    A2_col_name (str): the column name in the original data representing non-effect allele
+    EAF_col_name (str): the column name in the original data represneting allele frequency for effect allele
+    Beta_col_name (str): the column name in the original data represneting effect size for effect allele
+    Se_col_name (str): the column name in the original data represneting standard error for effect size
+    P_col_name (str): the column name in the original data represneting p-value
+    separate_by (str): the delimiter of the original data, '\t' by default (tab separated)
+
+Returns:
+    A pandas data frame formmated in the following ways:
+    | Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      |
+    | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
+    | 1      | 438956 | rs4596 | G      | A      | 0.0021 | -0.538 | 0.5802 | 0.3533 |
+    | X      | 704956 | rs1234 | T      | C      | 0.0242 | 0.1685 | 0.2469 | 0.0843 |
+
+Example Usage:
 ```python
     df = converter.read_data(input_path, '\t', "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
     print(df)
