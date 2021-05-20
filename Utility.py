@@ -10,19 +10,14 @@ class Utility:
 
 
     # link = "http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"
-    def store_bb_as_dict(self, link):
-        bb = pyBigWig.open(link)
-        for i in bb:
-            print(i)
-        print(bb)
 
     def query_data(self, df, link):
         bb = pyBigWig.open(link)
         result = {}
         set_list = []
-        for i in range(df.shape[0]):
-            chrom = "chr" + str(df.iloc[i]["Chr"])
-            end_pos = df.iloc[i]["BP"]
+        for row in df.itertuples():
+            chrom = "chr" + str(row.Chr)
+            end_pos = row.BP
             start_pos =end_pos - 1
             dat = bb.entries(chrom, start_pos, end_pos)
             if dat != None:  
@@ -49,6 +44,3 @@ class Utility:
     def save_data(self, df):
         pass
 
-if __name__ == "__main__":
-    ut = Utility()
-    ut.store_bb_as_dict("dbSnp153.bb")

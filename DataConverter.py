@@ -367,8 +367,9 @@ if __name__ == "__main__":
             2. filter only the bi-allelic case and leave out other cases
             3. deduplicate data to make sure unique key (chr+bp) exist. Remove rows that contains duplicate keys.
             4. sort
-            5. lift over to the correct genome build
-            6. process the data: add rsid/ align effect allele with reference/ lift over/ flip strand
+            5. query required info from dbSnp153
+            6. lift over to the correct genome build
+            7. process the data: add rsid/ align effect allele with reference/ lift over/ flip strand
     """
     
     # -------------------------------------------------------
@@ -407,14 +408,10 @@ if __name__ == "__main__":
     print(F-E)
 
     A = time.time()
-    print(converter.new_flip_strand(dedup_bi_allelic, data))
+    print(converter.flip_strand(dedup_bi_allelic, data))
     B = time.time()
     print(B-A)
 
-    C = time.time()
-    print(converter.flip_strand(dedup_bi_allelic, data))
-    D = time.time()
-    print(D-C)
     # print(dedup_bi_allelic)
 
     # reference_path = "finngen_R4_AB1_ARTHROPOD.gz"
