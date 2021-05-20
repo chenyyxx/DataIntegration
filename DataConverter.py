@@ -8,6 +8,7 @@ import mysql.connector
 import pyBigWig
 import pickle
 from Utility import Utility
+import time
 
 # class
 class DataConverter:
@@ -22,33 +23,18 @@ class DataConverter:
     #     # self.lo = LiftOver(input_version, output_version) # TODO: do not create instance of lift over here
 
     # function to filter only bi-allelic case
+    # improve the time efficiency of the old filter bi-allelic function
     def filter_bi_allelic(self, df, rest=False):
-        list_df = list(df)
-        result = []
-        other_case = []
-        columns = df.columns
-        for i in range(df.shape[0]):  
-            # TODO: instead of using range(), maybe try using itertuples() / zip() / zip + to_dict('list') to increase time efficiency
-            # These could be done for other functions that contain for loops as well.
-            print(i)
-            A1 = df.iloc[i]["A1"]
-            A2 = df.iloc[i]["A2"]
-            row = list(df.iloc[i])
-            if len(A1) == 1 and len(A2) == 1: # case where current snp is a bi-allelic case
-                result.append(row)
-            else: # otherwise
-                other_case.append(row)
-        bi = pd.DataFrame(result, columns=columns)
-        dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
-        bi = bi.astype(dtype)
-        other = pd.DataFrame(other_case, columns=columns)
-        dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
-        other = other.astype(dtype)
         if not rest:
-            return bi
+            result = df[(df['A1'].str.len() == 1) & (df['A2'].str.len() == 1)].reset_index(drop=True)
+            return result
         else:
-            return other
+            result = df[(df['A1'].str.len() != 1) | (df['A2'].str.len() != 1)].reset_index(drop=True)
+            return result
 
+    def deduplicate(self, df):
+        result = df.drop_duplicates(subset=['Chr', 'BP'], keep=False)
+        return result
     # function to read data for process
 
     def read_data(self, input_path, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name, separate_by="\t"):
@@ -95,7 +81,11 @@ class DataConverter:
         print(name)
 
         df_out = output_path + "/" + prefix + "_" + name +".gz"
-        df.to_csv(df_out, compression='gzip')
+        try:
+            df.to_csv(df_out, compression='gzip')
+            return "successfully save"
+        except:
+            return "fail to save data"
 
     # helper function for liftover
 
@@ -135,13 +125,17 @@ class DataConverter:
     # function for liftover
     # the current lift over tool only get the chr + bp in new build version but leave the SNP and A1 A2 unchanged. 
     # Should I also change the SNP and A1 A2 to match the new build version?
-    def lift_over(self, df, lo_dict, chr_col_name, pos_col_name, keep_unconvertible=False):
+    def lift_over(self, df, lo_dict, chr_col_name, pos_col_name, keep_unconvertible=False, keep_original_version= False):
         reference_table = self.__lift_over_basic(df, lo_dict ,chr_col_name, pos_col_name)
         result = self.__lift_over_merge(df, reference_table)
         if not keep_unconvertible:
             new_chr_name = reference_table.columns[2]
             new_pos_name = reference_table.columns[3]
             result = result.dropna(subset=[new_chr_name]).reset_index(drop=True)
+        if not keep_original_version:
+            new_chr_col_name = lo_dict['output_version']+"_chr"
+            new_pos_col_name = lo_dict['output_version']+"_pos"
+            result = result[[new_chr_col_name, new_pos_col_name, "SNP", "A1", "A2", "EAF", "Beta", "Se", "P"]].rename({new_chr_col_name:"Chr", new_pos_col_name:"BP"}, axis="columns")
         return result
 
     # function to fill in missing rsid
@@ -255,16 +249,21 @@ class DataConverter:
     ## assuming both data set belongs to the same genome version
 
     def align_allele_effect_size(self, reference_data, process_data):
-        reference = reference_data[["Chr", "BP", "A1", "Beta"]].rename({"A1":"reference_A1", "Beta":"reference_Beta"}, axis="columns")
-        process = process_data[["Chr", "BP", "A1", "Beta"]].rename({"A1":"process_A1", "Beta":"process_Beta"}, axis="columns")
-        merge_table = pd.merge(process, reference, on=["Chr, BP"], how="inner")
+        reference = reference_data[["Chr", "BP", "A1", "A2"]].rename({"A1":"reference_A1", "A2":"reference_A2"}, axis="columns")
+        process = process_data[["Chr", "BP", "A1", "A2"]].rename({"A1":"process_A1", "A2":"process_A2"}, axis="columns")
+        merge_table = pd.merge(process, reference, on=["Chr", "BP"], how="inner")
+        print(merge_table)
+        if len(merge_table) == 0:
+            print("reference data and process data have no records in common. Please check data source.")
+            return
         first_ref_A1 = merge_table.iloc[0]["reference_A1"]
         first_proc_A1 = merge_table.iloc[0]["process_A1"]
         if first_ref_A1 == first_proc_A1: # check the rest to make sure all equal
+            print("first case")
             for i in range(1, merge_table.shape[0]):
-                print(i)
-                ref_A1 = merge_table.iloc[i]["reference_A1"]
-                proc_A1 = merge_table.iloc[i]["process_A1"]
+                # print(i)
+                ref_A1 = merge_table.iloc[i]["reference_A1"].upper()
+                proc_A1 = merge_table.iloc[i]["process_A1"].upper()
                 if ref_A1 != proc_A1:
                     print("data effect allele is not consistent")
                     return
@@ -273,10 +272,11 @@ class DataConverter:
             return
 
         else: # check the rest to make sure all not equal
+            print("other case")
             for i in range(1, merge_table.shape[0]):
-                print(i)
-                ref_A1 = merge_table.iloc[i]["reference_A1"]
-                proc_A1 = merge_table.iloc[i]["process_A1"]
+                # print(i)
+                ref_A1 = merge_table.iloc[i]["reference_A1"].upper()
+                proc_A1 = merge_table.iloc[i]["process_A1"].upper()
                 if ref_A1 == proc_A1:
                     print("data effect allele is not consistent")
                     return
@@ -322,8 +322,8 @@ class DataConverter:
     def delete(self):
         pass
     
-    def deduplicate(self):
-        pass
+
+
 
     def create_tbi_index(self, df):
         pass
@@ -361,8 +361,11 @@ if __name__ == "__main__":
     """
         STEPS:
             1. read the data to be processed and formatted in uniform form 
-            2. filter only the bi-allelic case and leave out
-            3. process the data: add rsid/ align effect allele with reference/ lift over/ flip strand
+            2. filter only the bi-allelic case and leave out other cases
+            3. deduplicate data to make sure unique key (chr+bp) exist. Remove rows that contains duplicate keys.
+            4. sort
+            5. lift over to the correct genome build
+            6. process the data: add rsid/ align effect allele with reference/ lift over/ flip strand
     """
     
     # -------------------------------------------------------
@@ -380,31 +383,56 @@ if __name__ == "__main__":
     # df = converter.read_data()
 
     # test call for read_data()
-    df = converter.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
-    # print(df)
+    new_df = converter.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
 
+    df = converter.read_data(input_path, "chromosome","base_pair_location", "hm_variant_id" ,"hm_effect_allele", "hm_other_allele", "hm_effect_allele_frequency", "hm_beta", "standard_error", "p_value")
+    
+    print(new_df)
+    print(df)
     # test call for filter_by_allelic()
-    bi_allelic = converter.filter_bi_allelic(df)
+    bi_allelic = converter.filter_bi_allelic(df[:100000])
+    # new_bi_allelic = converter.new_bi_allelic(df[:100000])
+    # print(bi_allelic)
+    # print(new_bi_allelic)
+
+    dedup_bi_allelic = converter.deduplicate(bi_allelic)
+    # print(dedup_bi_allelic)
+
+    # reference_path = "finngen_R4_AB1_ARTHROPOD.gz"
+    # reference_df = converter.read_data(reference_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
+    # reference_subset = reference_df.query('Chr == "10"').reset_index(drop=True)
+    
+    # A = time.time()
+    # reference_bi_allelic = converter.filter_bi_allelic(reference_subset)
+    # B = time.time()
+    # print(reference_bi_allelic)
+    # print(B-A)
+
+
+    # print(converter.filter_bi_allelic(reference_subset, rest=True))
+    # dedup_finngen = converter.deduplicate(reference_bi_allelic)
+    # print(dedup_finngen)
     # other = converter.filter_bi_allelic(df, rest=True)
-    print(bi_allelic)
-    # print(other)
+    # print(bi_allelic)
+    # # print(other)
 
-    # test call for create_lo()
+    # # test call for create_lo()
     # lo_dict = converter.create_lo(input_format, output_format)
-    # print(lo_dict)
+    # # print(lo_dict)
 
-    # test call for lift_over()
-    # lift_over_result = converter.lift_over(bi_allelic, lo_dict, "Chr", "BP")
+    # # test call for lift_over()
+    # lo_result = converter.lift_over(bi_allelic, lo_dict, "Chr", "BP", keep_original_version=True)
+    # lift_over_result = converter.lift_over(bi_allelic, lo_dict, "Chr", "BP", keep_original_version=False)
     # print(lift_over_result)
 
     # test call for query_data()
     
     # save the query from dbSnp153 as python dictionary
-
-    # data = converter.query_data(bi_allelic)
+    # ut = Utility()
+    # dbSnp153 = ut.query_data(bi_allelic, "dbSnp153.bb")
     # converter.save_obj(data, "dbSnp153")
-    ut = Utility()
-    dbSnp153 = ut.load_obj("dbSnp153")
+    # ut = Utility()
+    # dbSnp153 = ut.load_obj("dbSnp153")
     # print(dbSnp153)
     # key = ("10", 42272967)
     # if key in data:
@@ -438,13 +466,51 @@ if __name__ == "__main__":
 
     reference_path = "finngen_R4_AB1_ARTHROPOD.gz"
     reference_df = converter.read_data(reference_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
-
-    referecence_bi_allelic = converter.filter_bi_allelic(reference_df)
+    reference_subset = reference_df.query('Chr == "10"').reset_index(drop=True)
+    
+    reference_bi_allelic = converter.filter_bi_allelic(reference_subset)
+    dedup_reference_bi_allelic = converter.deduplicate(reference_bi_allelic)
     # print(bi_allelic)
-    print(referecence_bi_allelic)
+    # print(reference_bi_allelic)
+    print(dedup_bi_allelic)
+    print(dedup_reference_bi_allelic)
+    # # print(lift_over_result)
     print("aligned result")
-    aligned = converter.align_allele_effect_size(referecence_bi_allelic, bi_allelic)
+    aligned = converter.align_allele_effect_size(dedup_bi_allelic, dedup_reference_bi_allelic)
     print(aligned)
+
+    # print("check")
+    # print(lo_result[lo_result['hg38_pos'] == 279194])
+    # print(bi_allelic[bi_allelic['BP'] == 279194])
+    # print(reference_bi_allelic[reference_bi_allelic['BP'] == 279194])
+
+    # print(0)
+    # print(dbSnp153[("10", 279194)])
+    # print(1)
+    # print(dbSnp153[("10", 428660)])
+    # print(2)
+    # print(dbSnp153[("10", 498538)])
+    # print(3)
+    # print(dbSnp153[("10", 606191)])
+    # print(4)
+    # print(dbSnp153[("10", 761226)])
+    # print(561)
+    # print(dbSnp153[("10", 131345386)])
+    # print(562)
+    # print(dbSnp153[("10", 131368196)])
+    # print(563)
+    # print(dbSnp153[("10", 131379938)])
+    # print(564)
+    # print(dbSnp153[("10", 131433359)])
+    # print(565)
+    # print(dbSnp153[("10", 131734323)])
+    # print(bi_allelic)
+    # print(bi_allelic[bi_allelic['SNP'] == "rs11814979"])
+    # print(lift_over_result[lift_over_result['BP'] == 28984072])
+
+
+   
+
 
 
     # -------------------------------------------------------
@@ -487,3 +553,9 @@ if __name__ == "__main__":
     # # test call for swap effect allele
     # print(df)
     # print(converter.swap_effect_allele(df))
+
+
+
+    # 问题一：会否存在统一各data一部分forward strand一部分backward trand
+    # 问题二：会否存在同一个data
+    # 问题三：lift over的时候，知识chr + pos flip to new version， should I also change other such as a1 and a2

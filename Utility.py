@@ -10,6 +10,12 @@ class Utility:
 
 
     # link = "http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"
+    def store_bb_as_dict(self, link):
+        bb = pyBigWig.open(link)
+        for i in bb:
+            print(i)
+        print(bb)
+
     def query_data(self, df, link):
         bb = pyBigWig.open(link)
         result = {}
@@ -42,3 +48,7 @@ class Utility:
 
     def save_data(self, df):
         pass
+
+if __name__ == "__main__":
+    ut = Utility()
+    ut.store_bb_as_dict("dbSnp153.bb")

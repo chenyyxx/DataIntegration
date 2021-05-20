@@ -52,7 +52,7 @@ To use the pacakge, please follow the steps below:
         * output_format (e.g. "hg38")
     - Create instance of the class with the following code chunk
         - ```python 
-            converter = DataConverter(input_path, output_path, input_format,output_format)
+            converter = DataConverter()
         ```
     - Start using the provided functions, e.g.: 
         - ```python 
@@ -89,14 +89,28 @@ Returns:
 
 Example Usage:
 ```python
-    df = converter.read_data(input_path, '\t', "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
-    print(df)
+    df = converter.read_data(input_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
 ```
 ### Save Data
+Description: function to save the processed data in the tsv form as a gz file
+
+Args:
+- input_path (str): the input path of the original data
+- output_path (str): the path of the output directory
+- df (pandas data.frame): the pandas data.frame to be saved
+- prefix (str): the prefix of the file output name
+
+Returns:
+This function return the status of outputing the file.
+
+
 Example:
 ```python
-    data = converter.query_data(df)
-    res = converter.add_rsid(df, data)
+    # process data
+    ut = Utility()
+    dbSnp153 = ut.load_obj("dbSnp153")
+    res = converter.add_rsid(df, dbSnp153)
+    # save data to a gz file with file name prefix being add_rsid
     converter.save_data(res, "add_rsid")
 ```
 
@@ -121,6 +135,20 @@ Example:
 ```
 
 ### Align Effect Allele and Effect Size between Two Datasets
+Example:
+```python
+    print(df)
+    print(converter.swap_effect_allele(df))
+```
+
+### Sort by Chr and BP
+Example:
+```python
+    print(df)
+    print(converter.swap_effect_allele(df))
+```
+
+### Filter data by certain criterias
 Example:
 ```python
     print(df)
