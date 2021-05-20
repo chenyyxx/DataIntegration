@@ -97,15 +97,15 @@ class DataConverter:
         lo = LiftOver(input_version, output_version)
         return {"input_version": input_version, "output_version":output_version, "lo":lo}
 
-    def __lift_over_basic(self, df, lo_dict ,chr_col_name, pos_col_name):
+    def __lift_over_basic(self, df, lo_dict):
         cols = list(df.columns)
         temp = []
         lo = lo_dict["lo"]
         input_version = lo_dict["input_version"]
         output_version = lo_dict["output_version"]
-        for i in range(df.shape[0]):
-            chrom = "chr" + str(df.iloc[i][chr_col_name])
-            pos =df.iloc[i][pos_col_name]
+        for row in df.itertuples():
+            chrom = "chr" + str(row.Chr)
+            pos =row.BP
             modified = lo.convert_coordinate(chrom, pos)
             # print(i)
             if modified:
@@ -114,7 +114,7 @@ class DataConverter:
                 temp.append([chrom[3:], pos, new_chrom, new_pos])
         new_chr_name = output_version + '_' + 'chr'
         new_pos_name = output_version + '_' + 'pos'
-        temp_df = pd.DataFrame(temp, columns=[chr_col_name, pos_col_name, new_chr_name, new_pos_name])
+        temp_df = pd.DataFrame(temp, columns=["Chr", "BP", new_chr_name, new_pos_name])
         dtype= {new_chr_name: str, new_pos_name:'Int64'}
         temp_df.drop_duplicates(subset = ['Chr','BP'], inplace=True)
         temp_df = temp_df.astype(dtype)
@@ -129,8 +129,8 @@ class DataConverter:
     # function for liftover
     # the current lift over tool only get the chr + bp in new build version but leave the SNP and A1 A2 unchanged. 
     # Should I also change the SNP and A1 A2 to match the new build version?
-    def lift_over(self, df, lo_dict, chr_col_name, pos_col_name, keep_unconvertible=False, keep_original_version= False):
-        reference_table = self.__lift_over_basic(df, lo_dict ,chr_col_name, pos_col_name)
+    def lift_over(self, df, lo_dict, keep_unconvertible=False, keep_original_version= False):
+        reference_table = self.__lift_over_basic(df, lo_dict)
         result = self.__lift_over_merge(df, reference_table)
         if not keep_unconvertible:
             new_chr_name = reference_table.columns[2]
@@ -146,10 +146,10 @@ class DataConverter:
 
     def add_rsid(self, df, data):
         added_rs_id = []
-        for i in range(df.shape[0]):
-            chrom = df.iloc[i]["Chr"]
-            pos = df.iloc[i]["BP"]
-            rs_id = df.iloc[i]["SNP"]
+        for row in df.itertuples():
+            chrom = row.Chr
+            pos = row.BP
+            rs_id = row.SNP
             key = (chrom, pos)
             if key in data: # the row in the data can be found in dbSnp153
                 raw_string = data[key]
@@ -185,7 +185,7 @@ class DataConverter:
         return new_allele
 
     # function to flip strand
-    def new_flip_strand(self, df, data, keep_all=False):
+    def flip_strand(self, df, data, keep_all=False):
         flipped_A1 = []
         flipped_A2 =  []
         comment = []
@@ -242,67 +242,6 @@ class DataConverter:
             return result
         else:
             return result.query('new_A1 != "3" & new_A1 != "2" & new_A1 != "1"').reset_index(drop=True)
-            
-        
-
-    def flip_strand(self, df, data, keep_all=False):
-        flipped_A1 = []
-        flipped_A2 =  []
-        comment = []
-        for i in range(df.shape[0]):
-            chrom = df.iloc[i]["Chr"]
-            pos = df.iloc[i]["BP"]
-            A1 = df.iloc[i]["A1"].upper()
-            A2 = df.iloc[i]["A2"].upper()
-
-            key = (chrom, pos)
-            if key in data: # check if key in dnSnp153
-                cur_set = {A1, A2}
-                raw_string = data[key]
-                parsed_string = raw_string.split("\t")
-                data_a1 = [i for i in parsed_string[1] if i != ","]
-                data_a2 = [i for i in parsed_string[3] if i != ","]
-
-                if len(data_a1) == 1 and len(data_a2) == 1:
-                    cur_set.add(data_a1[0])
-                    cur_set.add(data_a2[0])
-                    # print(cur_set)
-                    if len(cur_set) == 4: # flip
-                        new_a1 = self.flip(A1)
-                        new_a2 = self.flip(A2)
-                        flipped_A1.append(new_a1)
-                        flipped_A2.append(new_a2)
-                        comment.append("flipped")
-                    elif len(cur_set) == 2: # do not flip
-                        # print(i)
-                        flipped_A1.append(A1)
-                        flipped_A2.append(A2)
-                        comment.append("keep original")
-                    else: # mark: what is this case? => original data T/C, dbsnp153 C/A: 10  94958283  rs111998500
-                        flipped_A1.append("1")
-                        flipped_A2.append("1")
-                        print(data_a1)
-                        print(data_a2)
-                        # print(parsed_string[3])
-                        # print(parsed_string[3].split(","))
-                        comment.append("mark")
-                else: # tri-alleic snps -> mark
-                    flipped_A1.append("2")
-                    flipped_A2.append("2")
-                    comment.append("dbSnp153: Indel")
-            else: # key not found
-                flipped_A1.append("3")
-                flipped_A2.append("3")
-                comment.append("Key not found")  
-
-        result = df.assign(new_A1 = flipped_A1)
-        result = result.assign(new_A2 = flipped_A2)
-        result = result.assign(comment = comment)
-        # print(result)
-        if keep_all:
-            return result
-        else:
-            return result.query('new_A1 != "3" & new_A1 != "2" & new_A1 != "1"').reset_index(drop=True)
 
 
 
@@ -346,45 +285,6 @@ class DataConverter:
         return result
             
         
-
-
-    # def align_allele_effect_size(self, reference_data, process_data):
-    #     reference = reference_data[["Chr", "BP", "A1", "A2"]].rename({"A1":"reference_A1", "A2":"reference_A2"}, axis="columns")
-    #     process = process_data[["Chr", "BP", "A1", "A2"]].rename({"A1":"process_A1", "A2":"process_A2"}, axis="columns")
-    #     merge_table = pd.merge(process, reference, on=["Chr", "BP"], how="inner")
-    #     print(merge_table)
-    #     if len(merge_table) == 0:
-    #         print("reference data and process data have no records in common. Please check data source.")
-    #         return
-    #     first_ref_A1 = merge_table.iloc[0]["reference_A1"]
-    #     first_proc_A1 = merge_table.iloc[0]["process_A1"]
-    #     if first_ref_A1 == first_proc_A1: # check the rest to make sure all equal
-    #         print("first case")
-    #         for i in range(1, merge_table.shape[0]):
-    #             # print(i)
-    #             ref_A1 = merge_table.iloc[i]["reference_A1"].upper()
-    #             proc_A1 = merge_table.iloc[i]["process_A1"].upper()
-    #             if ref_A1 != proc_A1:
-    #                 print(i)
-    #                 print("data effect allele is not consistent")
-    #                 return merge_table.iloc[i]
-    #         # all consitent: no need to change
-    #         print("two data sets have same effect allele, no need to change")
-    #         return
-
-    #     else: # check the rest to make sure all not equal
-    #         print("other case")
-    #         for i in range(1, merge_table.shape[0]):
-    #             # print(i)
-    #             ref_A1 = merge_table.iloc[i]["reference_A1"].upper()
-    #             proc_A1 = merge_table.iloc[i]["process_A1"].upper()
-    #             if ref_A1 == proc_A1:
-    #                 print(i)
-    #                 print("data effect allele is not consistent")
-    #                 return merge_table.iloc[i]
-    #         # all consitent: need to change size 
-    #         result = self.swap_effect_allele(process_data)
-    #         return result
 
     
     # helper function to swap effect allele and align effect size
