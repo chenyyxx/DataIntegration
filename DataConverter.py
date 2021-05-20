@@ -185,6 +185,65 @@ class DataConverter:
         return new_allele
 
     # function to flip strand
+    def new_flip_strand(self, df, data, keep_all=False):
+        flipped_A1 = []
+        flipped_A2 =  []
+        comment = []
+        for row in df.itertuples():
+            chrom = row.Chr
+            pos = row.BP
+            A1 = row.A1
+            A2 = row.A2
+            key = (chrom, pos)
+            if key in data: # check if key in dnSnp153
+                cur_set = {A1, A2}
+                raw_string = data[key]
+                parsed_string = raw_string.split("\t")
+                data_a1 = [i for i in parsed_string[1] if i != ","]
+                data_a2 = [i for i in parsed_string[3] if i != ","]
+
+                if len(data_a1) == 1 and len(data_a2) == 1:
+                    cur_set.add(data_a1[0])
+                    cur_set.add(data_a2[0])
+                    # print(cur_set)
+                    if len(cur_set) == 4: # flip
+                        new_a1 = self.flip(A1)
+                        new_a2 = self.flip(A2)
+                        flipped_A1.append(new_a1)
+                        flipped_A2.append(new_a2)
+                        comment.append("flipped")
+                    elif len(cur_set) == 2: # do not flip
+                        # print(i)
+                        flipped_A1.append(A1)
+                        flipped_A2.append(A2)
+                        comment.append("keep original")
+                    else: # mark: what is this case? => original data T/C, dbsnp153 C/A: 10  94958283  rs111998500
+                        flipped_A1.append("1")
+                        flipped_A2.append("1")
+                        print(data_a1)
+                        print(data_a2)
+                        # print(parsed_string[3])
+                        # print(parsed_string[3].split(","))
+                        comment.append("mark")
+                else: # tri-alleic snps -> mark
+                    flipped_A1.append("2")
+                    flipped_A2.append("2")
+                    comment.append("dbSnp153: Indel")
+            else: # key not found
+                flipped_A1.append("3")
+                flipped_A2.append("3")
+                comment.append("Key not found") 
+
+        result = df.assign(new_A1 = flipped_A1)
+        result = result.assign(new_A2 = flipped_A2)
+        result = result.assign(comment = comment)
+        # print(result)
+        if keep_all:
+            return result
+        else:
+            return result.query('new_A1 != "3" & new_A1 != "2" & new_A1 != "1"').reset_index(drop=True)
+            
+        
 
     def flip_strand(self, df, data, keep_all=False):
         flipped_A1 = []
@@ -427,9 +486,9 @@ if __name__ == "__main__":
     # df = converter.read_data()
 
     # test call for read_data()
-    df = converter.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
+    # df = converter.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
 
-    # df = converter.read_data(input_path, "chromosome","base_pair_location", "hm_variant_id" ,"hm_effect_allele", "hm_other_allele", "hm_effect_allele_frequency", "hm_beta", "standard_error", "p_value")
+    df = converter.read_data(input_path, "chromosome","base_pair_location", "hm_variant_id" ,"hm_effect_allele", "hm_other_allele", "hm_effect_allele_frequency", "hm_beta", "standard_error", "p_value")
     
     # print(new_df)
     # print(df)
@@ -440,6 +499,22 @@ if __name__ == "__main__":
     # print(new_bi_allelic)
 
     dedup_bi_allelic = converter.deduplicate(bi_allelic)
+
+    ut = Utility()
+    E = time.time()
+    data = ut.query_data(bi_allelic, "dbSnp153.bb")
+    F = time.time()
+    print(F-E)
+
+    A = time.time()
+    print(converter.new_flip_strand(dedup_bi_allelic, data))
+    B = time.time()
+    print(B-A)
+
+    C = time.time()
+    print(converter.flip_strand(dedup_bi_allelic, data))
+    D = time.time()
+    print(D-C)
     # print(dedup_bi_allelic)
 
     # reference_path = "finngen_R4_AB1_ARTHROPOD.gz"
@@ -508,24 +583,24 @@ if __name__ == "__main__":
     # print(df)
     # print(converter.swap_effect_allele(df))
 
-    reference_path = "finngen_R4_AB1_ARTHROPOD.gz"
-    reference_df = converter.read_data(reference_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
-    reference_subset = reference_df.query('Chr == "10"').reset_index(drop=True)
+    # reference_path = "finngen_R4_AB1_ARTHROPOD.gz"
+    # reference_df = converter.read_data(reference_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
+    # reference_subset = reference_df.query('Chr == "10"').reset_index(drop=True)
     
-    reference_bi_allelic = converter.filter_bi_allelic(reference_subset)
-    dedup_reference_bi_allelic = converter.deduplicate(reference_bi_allelic)
+    # reference_bi_allelic = converter.filter_bi_allelic(reference_subset)
+    # dedup_reference_bi_allelic = converter.deduplicate(reference_bi_allelic)
     # print(bi_allelic)
     # print(reference_bi_allelic)
     # print(dedup_bi_allelic)
     # print(dedup_reference_bi_allelic)
     # # print(lift_over_result)
-    print("aligned result")
+    # print("aligned result")
     # aligned = converter.align_allele_effect_size(dedup_bi_allelic, dedup_reference_bi_allelic)
     # print(aligned)
-    error_rows = converter.align_effect_allele(dedup_reference_bi_allelic,dedup_bi_allelic, check_error_rows=True)
-    aligned = converter.align_effect_allele(dedup_reference_bi_allelic, dedup_bi_allelic)
-    print(error_rows)
-    print(aligned)
+    # error_rows = converter.align_effect_allele(dedup_reference_bi_allelic,dedup_bi_allelic, check_error_rows=True)
+    # aligned = converter.align_effect_allele(dedup_reference_bi_allelic, dedup_bi_allelic)
+    # print(error_rows)
+    # print(aligned)
 
 
     # print("check")
