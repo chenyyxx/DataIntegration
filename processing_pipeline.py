@@ -14,6 +14,7 @@ def main():
             8. save data
     """
     # create DataConverter() instance
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     dc = DataConverter()
 
     # setting up global variables such paths and build version
@@ -24,39 +25,48 @@ def main():
     output_format = "hg38"
 
 
-    # read data
+    # 1. read data
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start reading data")
     df = dc.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
     # df = dc.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"hm_effect_allele", "hm_other_allele", "hm_effect_allele_frequency", "hm_beta", "standard_error", "p_value")
     # reference_df = dc.read_data(reference_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
     print("data successfully read")
 
-    # filter biallelic
+    # 2. filter biallelic
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start filtering bi-allelic cases")
-    bi_allelic = dc.filter_bi_allelic(df[:100000])
+    bi_allelic = dc.filter_bi_allelic(df)
     # reference_bi_allelic = dc.filter_bi_allelic(reference_df)
 
-    # drop duplicates
+    # 3. drop duplicates
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start deduplicating")
     dedup_df = dc.deduplicate(bi_allelic)
     # dedup_reference = dc.deduplicate(reference_bi_allelic)
 
-    # sort
+    # 4. sort
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start sorting")
+    sorted_df = dc.sort_by_Chr(dedup_df)
+    print(sorted_df)
 
-    # query dbSnp153 for required information
-    print("start getting required info from dbSnp153")
-    ut = Utility()
-    dbSnp153 = ut.query_data(bi_allelic, "dbSnp153.bb")
-    print("end querying")
+    # 5. query dbSnp153 for required information
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
+    # print("start getting required info from dbSnp153")
+    # ut = Utility()
+    # dbSnp153 = ut.query_data(bi_allelic, "dbSnp153.bb")
+    # print("end querying")
 
-    # data processing (e.g.): Flip Strand
-    print("start processing data: flip strand")
-    result=dc.flip_strand(dedup_df, dbSnp153)
-    print(result)
+    # 6. data processing (e.g.): Flip Strand
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
+    # print("start processing data: flip strand")
+    # result=dc.flip_strand(dedup_df, dbSnp153)
+    # print(result)
 
-    # save data
-    dc.save_data(input_path, output_path, result, "flipped_strand")
+    # 7. save data
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
+    # dc.save_data(input_path, output_path, result, "flipped_strand")
 
 
 if __name__ == "__main__":

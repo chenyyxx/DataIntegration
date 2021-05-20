@@ -73,6 +73,7 @@ class DataConverter:
         dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
         res = res.astype(dtype)
         res["Chr"] = res["Chr"].str.upper()
+        res["Chr"] = res["Chr"].apply(lambda y: "X" if y=="22" else("Y" if y=="23" else y))
         res["A1"] = res["A1"].str.upper()
         res["A2"] = res["A2"].str.upper()
         res["SNP"] = res["SNP"].str.lower()
@@ -309,14 +310,14 @@ class DataConverter:
     # can be put into doc directly
 
     def sort_by_Chr(self, df):
-        def mixs(num):
+        def mixs(v):
             try:
-                ele = int(num)
-                return (0, ele, '')
+                return int(v)
             except ValueError:
-                return (1, num, '')
-        df.sort_values(by=["Chr", "BP"], key = mixs)
-        return df
+                return v
+        df = df.assign(chr_numeric = lambda x: x['Chr'].apply(lambda y: 22 if y=="X" else(23 if y=="Y" else int(y))))
+        result = df.sort_values(by=["chr_numeric", "BP"]).drop(['chr_numeric'], axis=1).reset_index(drop=True)
+        return result
 
 
     def insert(self):
