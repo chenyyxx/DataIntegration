@@ -72,6 +72,10 @@ class DataConverter:
             },axis="columns")
         dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
         res = res.astype(dtype)
+        res["Chr"] = res["Chr"].str.upper()
+        res["A1"] = res["A1"].str.upper()
+        res["A2"] = res["A2"].str.upper()
+        res["SNP"] = res["SNP"].str.lower()
         return res
 
     # function to output data and save as gzip
@@ -247,6 +251,42 @@ class DataConverter:
 
     ## assuming data set has no problem with consistent effect allele
     ## assuming both data set belongs to the same genome version
+    def swap_effect_allele_by_row(self, row):
+        pass
+
+    def align_effect_allele(self, reference, df, check_error_rows=False):
+        reference = reference[["Chr", "BP", "A1", "A2"]].rename({"A1":"reference_A1", "A2":"reference_A2"}, axis="columns")
+        process = df[["Chr", "BP", "A1", "A2"]].rename({"A1":"process_A1", "A2":"process_A2"}, axis="columns")
+        merge_table = pd.merge(process, reference, on=["Chr", "BP"], how="inner")
+        if len(merge_table) == 0:
+            print("reference data and process data have no records in common. Please check data source.")
+            return
+        nochange_mask = (merge_table["process_A1"] == merge_table["reference_A1"]) & (merge_table["process_A2"] == merge_table["reference_A2"])
+        align_mask = (merge_table["process_A1"] == merge_table["reference_A2"]) & (merge_table["process_A2"] == merge_table["reference_A1"])
+        error_mask = ~nochange_mask & ~align_mask
+
+        key_to_nochange = merge_table[nochange_mask][["Chr", "BP"]]
+        key_to_align = merge_table[align_mask][["Chr", "BP"]]
+        key_to_error = merge_table[error_mask][["Chr", "BP"]]
+        # print(key_to_error)
+
+        nochange = pd.merge(df, key_to_nochange, on=["Chr", "BP"], how="inner")
+        align = pd.merge(df, key_to_align, on=["Chr", "BP"], how="inner")
+        aligned = self.swap_effect_allele(align)
+        print("aligned")
+        print(aligned)
+        error = pd.merge(df, key_to_error, on=["Chr", "BP"], how="inner")
+        # print(error)
+        # print(aligned)
+        result = nochange.append(aligned).reset_index(drop=True)
+        # print(result)
+        if check_error_rows:
+            return pd.merge(error, merge_table[error_mask], on=["Chr", "BP"], how="inner")
+        # TODO: sort first, then return
+        return result
+            
+        
+
 
     def align_allele_effect_size(self, reference_data, process_data):
         reference = reference_data[["Chr", "BP", "A1", "A2"]].rename({"A1":"reference_A1", "A2":"reference_A2"}, axis="columns")
@@ -265,8 +305,9 @@ class DataConverter:
                 ref_A1 = merge_table.iloc[i]["reference_A1"].upper()
                 proc_A1 = merge_table.iloc[i]["process_A1"].upper()
                 if ref_A1 != proc_A1:
+                    print(i)
                     print("data effect allele is not consistent")
-                    return
+                    return merge_table.iloc[i]
             # all consitent: no need to change
             print("two data sets have same effect allele, no need to change")
             return
@@ -278,11 +319,13 @@ class DataConverter:
                 ref_A1 = merge_table.iloc[i]["reference_A1"].upper()
                 proc_A1 = merge_table.iloc[i]["process_A1"].upper()
                 if ref_A1 == proc_A1:
+                    print(i)
                     print("data effect allele is not consistent")
-                    return
+                    return merge_table.iloc[i]
             # all consitent: need to change size 
             result = self.swap_effect_allele(process_data)
             return result
+
     
     # helper function to swap effect allele and align effect size
 
@@ -383,12 +426,12 @@ if __name__ == "__main__":
     # df = converter.read_data()
 
     # test call for read_data()
-    new_df = converter.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
+    df = converter.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
 
-    df = converter.read_data(input_path, "chromosome","base_pair_location", "hm_variant_id" ,"hm_effect_allele", "hm_other_allele", "hm_effect_allele_frequency", "hm_beta", "standard_error", "p_value")
+    # df = converter.read_data(input_path, "chromosome","base_pair_location", "hm_variant_id" ,"hm_effect_allele", "hm_other_allele", "hm_effect_allele_frequency", "hm_beta", "standard_error", "p_value")
     
-    print(new_df)
-    print(df)
+    # print(new_df)
+    # print(df)
     # test call for filter_by_allelic()
     bi_allelic = converter.filter_bi_allelic(df[:100000])
     # new_bi_allelic = converter.new_bi_allelic(df[:100000])
@@ -472,12 +515,17 @@ if __name__ == "__main__":
     dedup_reference_bi_allelic = converter.deduplicate(reference_bi_allelic)
     # print(bi_allelic)
     # print(reference_bi_allelic)
-    print(dedup_bi_allelic)
-    print(dedup_reference_bi_allelic)
+    # print(dedup_bi_allelic)
+    # print(dedup_reference_bi_allelic)
     # # print(lift_over_result)
     print("aligned result")
-    aligned = converter.align_allele_effect_size(dedup_bi_allelic, dedup_reference_bi_allelic)
+    # aligned = converter.align_allele_effect_size(dedup_bi_allelic, dedup_reference_bi_allelic)
+    # print(aligned)
+    error_rows = converter.align_effect_allele(dedup_reference_bi_allelic,dedup_bi_allelic, check_error_rows=True)
+    aligned = converter.align_effect_allele(dedup_reference_bi_allelic, dedup_bi_allelic)
+    print(error_rows)
     print(aligned)
+
 
     # print("check")
     # print(lo_result[lo_result['hg38_pos'] == 279194])
