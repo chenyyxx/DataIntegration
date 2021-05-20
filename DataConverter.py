@@ -56,7 +56,7 @@ class DataConverter:
 
         """
         raw_df = pd.read_csv(input_path, compression='gzip', header=0, sep=separate_by,quotechar='"')
-        print(raw_df)
+        # print(raw_df)
         result = raw_df.loc[:,[Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name]]
         res = result.rename(
             {
@@ -251,8 +251,6 @@ class DataConverter:
 
     ## assuming data set has no problem with consistent effect allele
     ## assuming both data set belongs to the same genome version
-    def swap_effect_allele_by_row(self, row):
-        pass
 
     def align_effect_allele(self, reference, df, check_error_rows=False):
         reference = reference[["Chr", "BP", "A1", "A2"]].rename({"A1":"reference_A1", "A2":"reference_A2"}, axis="columns")
@@ -273,8 +271,8 @@ class DataConverter:
         nochange = pd.merge(df, key_to_nochange, on=["Chr", "BP"], how="inner")
         align = pd.merge(df, key_to_align, on=["Chr", "BP"], how="inner")
         aligned = self.swap_effect_allele(align)
-        print("aligned")
-        print(aligned)
+        # print("aligned")
+        # print(aligned)
         error = pd.merge(df, key_to_error, on=["Chr", "BP"], how="inner")
         # print(error)
         # print(aligned)
@@ -283,48 +281,51 @@ class DataConverter:
         if check_error_rows:
             return pd.merge(error, merge_table[error_mask], on=["Chr", "BP"], how="inner")
         # TODO: sort first, then return
+        print(str(nochange.shape[0]) + " rows were left unchanged (already aligned)")
+        print(str(aligned.shape[0]) + " rows were aligned successfully")
+        print(str(error.shape[0]) + " rows failed to align, dropped from result! Set the check_error_rows flag to True to view them.")
         return result
             
         
 
 
-    def align_allele_effect_size(self, reference_data, process_data):
-        reference = reference_data[["Chr", "BP", "A1", "A2"]].rename({"A1":"reference_A1", "A2":"reference_A2"}, axis="columns")
-        process = process_data[["Chr", "BP", "A1", "A2"]].rename({"A1":"process_A1", "A2":"process_A2"}, axis="columns")
-        merge_table = pd.merge(process, reference, on=["Chr", "BP"], how="inner")
-        print(merge_table)
-        if len(merge_table) == 0:
-            print("reference data and process data have no records in common. Please check data source.")
-            return
-        first_ref_A1 = merge_table.iloc[0]["reference_A1"]
-        first_proc_A1 = merge_table.iloc[0]["process_A1"]
-        if first_ref_A1 == first_proc_A1: # check the rest to make sure all equal
-            print("first case")
-            for i in range(1, merge_table.shape[0]):
-                # print(i)
-                ref_A1 = merge_table.iloc[i]["reference_A1"].upper()
-                proc_A1 = merge_table.iloc[i]["process_A1"].upper()
-                if ref_A1 != proc_A1:
-                    print(i)
-                    print("data effect allele is not consistent")
-                    return merge_table.iloc[i]
-            # all consitent: no need to change
-            print("two data sets have same effect allele, no need to change")
-            return
+    # def align_allele_effect_size(self, reference_data, process_data):
+    #     reference = reference_data[["Chr", "BP", "A1", "A2"]].rename({"A1":"reference_A1", "A2":"reference_A2"}, axis="columns")
+    #     process = process_data[["Chr", "BP", "A1", "A2"]].rename({"A1":"process_A1", "A2":"process_A2"}, axis="columns")
+    #     merge_table = pd.merge(process, reference, on=["Chr", "BP"], how="inner")
+    #     print(merge_table)
+    #     if len(merge_table) == 0:
+    #         print("reference data and process data have no records in common. Please check data source.")
+    #         return
+    #     first_ref_A1 = merge_table.iloc[0]["reference_A1"]
+    #     first_proc_A1 = merge_table.iloc[0]["process_A1"]
+    #     if first_ref_A1 == first_proc_A1: # check the rest to make sure all equal
+    #         print("first case")
+    #         for i in range(1, merge_table.shape[0]):
+    #             # print(i)
+    #             ref_A1 = merge_table.iloc[i]["reference_A1"].upper()
+    #             proc_A1 = merge_table.iloc[i]["process_A1"].upper()
+    #             if ref_A1 != proc_A1:
+    #                 print(i)
+    #                 print("data effect allele is not consistent")
+    #                 return merge_table.iloc[i]
+    #         # all consitent: no need to change
+    #         print("two data sets have same effect allele, no need to change")
+    #         return
 
-        else: # check the rest to make sure all not equal
-            print("other case")
-            for i in range(1, merge_table.shape[0]):
-                # print(i)
-                ref_A1 = merge_table.iloc[i]["reference_A1"].upper()
-                proc_A1 = merge_table.iloc[i]["process_A1"].upper()
-                if ref_A1 == proc_A1:
-                    print(i)
-                    print("data effect allele is not consistent")
-                    return merge_table.iloc[i]
-            # all consitent: need to change size 
-            result = self.swap_effect_allele(process_data)
-            return result
+    #     else: # check the rest to make sure all not equal
+    #         print("other case")
+    #         for i in range(1, merge_table.shape[0]):
+    #             # print(i)
+    #             ref_A1 = merge_table.iloc[i]["reference_A1"].upper()
+    #             proc_A1 = merge_table.iloc[i]["process_A1"].upper()
+    #             if ref_A1 == proc_A1:
+    #                 print(i)
+    #                 print("data effect allele is not consistent")
+    #                 return merge_table.iloc[i]
+    #         # all consitent: need to change size 
+    #         result = self.swap_effect_allele(process_data)
+    #         return result
 
     
     # helper function to swap effect allele and align effect size
