@@ -1,32 +1,17 @@
 from DataConverter import DataConverter
 from Utility import Utility
+import time
+
 
 def main():
-    """
-        STEPS:
-            1. read the data to be processed and formatted in uniform form 
-            2. filter only the bi-allelic case and leave out other cases
-            3. deduplicate data to make sure unique key (chr+bp) exist. Remove rows that contains duplicate keys.
-            4. sort
-            5. lift over to the correct genome build
-            6. query required info from dbSnp153
-            7. process the data: add rsid/ align effect allele with reference/ lift over/ flip strand
-            8. save data
-    """
     # create DataConverter() instance
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     dc = DataConverter()
 
     # setting up global variables such paths and build version
-    input_path = "29531354-GCST006910-EFO_1001976.h.tsv.gz"
+    # input_path = "29531354-GCST006910-EFO_1001976.h.tsv.gz"
     reference_path = "finngen_R4_AB1_ARTHROPOD.gz"
-    output_path = "result"
-    input_format = "hg19"
-    output_format = "hg38"
 
-
-    # 1. read data
-    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start reading data")
     # df = dc.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
     # df = dc.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"hm_effect_allele", "hm_other_allele", "hm_effect_allele_frequency", "hm_beta", "standard_error", "p_value")
@@ -51,51 +36,43 @@ def main():
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start sorting")
     # sorted_df = dc.sort_by_Chr(dedup_df)
-    sorted_reference = dc.sort_by_Chr(dedup_reference)
+    sorted_reference = dc.sort_by_Chr(dedup_reference)[:1000000]
     # print(sorted_df)
 
 
-    # 5. lift over to the desired genome build
+
+
+    # 7.3 data processing (e.g.): Add rsID
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    # print("start converting genome build")
-    # lo_dict = dc.create_lo(input_format, output_format)
-    # lift_over_result = dc.lift_over(sorted_df, lo_dict)
-    # print(lift_over_result)
+    print("start processing data: add rsID")
+    A = time.time()
+    new_added_rsid = dc.new_add_rsid(sorted_reference)
+    B = time.time()
+    print(new_added_rsid)
+    print("Time used (new): ", B-A)
+
+
 
     # 6. query dbSnp153 for required information
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start getting required info from dbSnp153")
+    C = time.time()
     ut = Utility()
     dbSnp153 = ut.query_data(sorted_reference, "dbSnp153.bb")
     print("end querying")
-
-    
-
-    # 7.1 data processing (e.g.): Flip Strand
-    # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    # print("start processing data: flip strand")
-    # result=dc.flip_strand(dedup_df, dbSnp153)
-    # print(result)
-
-    # 7.2 data processing (e.g.): Align Effect Allele
-    # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    # print("start processing data: align effect allele")
-    # result = dc.align_effect_allele(sorted_reference, sorted_df)
-    # errors = dc.align_effect_allele(sorted_reference, sorted_df, check_error_rows=True)
-    # print(result)
-    # print(errors)
+    E = time.time()
 
     # 7.3 data processing (e.g.): Add rsID
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start processing data: add rsID")
     added_rsid = dc.add_rsid(sorted_reference, dbSnp153)
+    D = time.time()
     print(added_rsid)
+    print("Time used (old):" , D-C)
+    print("Time used (query):" , E-C)
+    print("Time used (process):" , D-E)
 
-
-    # 8. save data
-    # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    # dc.save_data(input_path, output_path, result, "flipped_strand")
-
+    
 
 if __name__ == "__main__":
     main()

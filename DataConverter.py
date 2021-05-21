@@ -25,11 +25,14 @@ class DataConverter:
     # function to filter only bi-allelic case
     # improve the time efficiency of the old filter bi-allelic function
     def filter_bi_allelic(self, df, rest=False):
+        len_mask = (df['A1'].str.len() == 1) & (df['A2'].str.len() == 1)
+        val_mask = (df['A1'] != "I") & (df['A1'] != "D") & (df['A1'] != "R") & (df['A2'] != "I") & (df['A2'] != "D") & (df['A2'] != "R")
+        mask = len_mask & val_mask
         if not rest:
-            result = df[(df['A1'].str.len() == 1) & (df['A2'].str.len() == 1)].reset_index(drop=True)
+            result = df[mask].reset_index(drop=True)
             return result
         else:
-            result = df[(df['A1'].str.len() != 1) | (df['A2'].str.len() != 1)].reset_index(drop=True)
+            result = df[~mask].reset_index(drop=True)
             return result
 
     def deduplicate(self, df):
@@ -144,6 +147,48 @@ class DataConverter:
         return result
 
     # function to fill in missing rsid
+
+    def query_dat(self, chro, bp):
+        chrom = "chr" + str(chro)
+        start = bp - 1
+        end = bp
+        bb = pyBigWig.open("dbSnp153.bb")
+        dat = bb.entries(chrom, start, end)
+        result = ""
+        if dat != None:  
+            for i in dat:
+                reference_start = i[0]
+                reference_end = i[1]
+                raw_string = i[2]
+                if reference_start == start and reference_end == end:
+                    result = raw_string
+        return result
+
+    def new_add_rsid(self, df):
+        added_rs_id = []
+        for row in df.itertuples():
+            chrom = row.Chr
+            pos = row.BP
+            rs_id = row.SNP
+            raw_string = self.query_dat(chrom, pos)
+            if raw_string != "":
+                parsed_string = raw_string.split('\t')
+                data_rs_id = parsed_string[0] 
+                if pd.isna(rs_id): # rs_id is absence in original dataset
+                    added_rs_id.append(data_rs_id)
+                    # print("find none")
+                elif rs_id == data_rs_id: # if rs_id in original dataset is the same as dnSnp153
+                    added_rs_id.append(rs_id)
+                    # print("same")
+                else: # find different rsid in dbSnp153, update with new
+                    added_rs_id.append(data_rs_id)
+                    # print("different")
+            else:
+                added_rs_id.append("key not found")
+                # print("key not found")
+        result = df.assign(added_rs_id = added_rs_id)
+        # print(result)
+        return result
 
     def add_rsid(self, df, data):
         added_rs_id = []
@@ -277,13 +322,13 @@ class DataConverter:
         # print(aligned)
         result = nochange.append(aligned).reset_index(drop=True)
         # print(result)
+        sorted_result = self.sort_by_Chr(result)
         if check_error_rows:
             return pd.merge(error, merge_table[error_mask], on=["Chr", "BP"], how="inner")
-        # TODO: sort first, then return
         print(str(nochange.shape[0]) + " rows were left unchanged (already aligned)")
         print(str(aligned.shape[0]) + " rows were aligned successfully")
         print(str(error.shape[0]) + " rows failed to align, dropped from result! Set the check_error_rows flag to True to view them.")
-        return result
+        return sorted_result
             
         
 

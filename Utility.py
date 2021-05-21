@@ -19,6 +19,7 @@ class Utility:
             chrom = "chr" + str(row.Chr)
             end_pos = row.BP
             start_pos =end_pos - 1
+            # print(chrom, start_pos, end_pos)
             dat = bb.entries(chrom, start_pos, end_pos)
             if dat != None:  
                 for i in dat:
