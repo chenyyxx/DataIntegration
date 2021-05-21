@@ -4,46 +4,42 @@ import pandas as pd
 import pyBigWig
 import pickle
 
-class Utility:
-    def __init__(self):
-        super().__init__()
 
+# link = "http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"
 
-    # link = "http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"
+def query_data(df, link):
+    bb = pyBigWig.open(link)
+    result = {}
+    set_list = []
+    for row in df.itertuples():
+        chrom = "chr" + str(row.Chr)
+        end_pos = row.BP
+        start_pos =end_pos - 1
+        # print(chrom, start_pos, end_pos)
+        dat = bb.entries(chrom, start_pos, end_pos)
+        if dat != None:  
+            for i in dat:
+                reference_start = i[0]
+                reference_end = i[1]
+                raw_string = i[2]
+                if reference_start == start_pos and reference_end == end_pos:
+                    key = (chrom[3:], reference_end)
+                    result[key] = raw_string
+    return result
 
-    def query_data(self, df, link):
-        bb = pyBigWig.open(link)
-        result = {}
-        set_list = []
-        for row in df.itertuples():
-            chrom = "chr" + str(row.Chr)
-            end_pos = row.BP
-            start_pos =end_pos - 1
-            # print(chrom, start_pos, end_pos)
-            dat = bb.entries(chrom, start_pos, end_pos)
-            if dat != None:  
-                for i in dat:
-                    reference_start = i[0]
-                    reference_end = i[1]
-                    raw_string = i[2]
-                    if reference_start == start_pos and reference_end == end_pos:
-                        key = (chrom[3:], reference_end)
-                        result[key] = raw_string
-        return result
+def save_obj(obj, name ):
+    with open('obj/'+ name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
-    def save_obj(self, obj, name ):
-        with open('obj/'+ name + '.pkl', 'wb') as f:
-            pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+def load_obj(name ):
+    with open('obj/' + name + '.pkl', 'rb') as f:
+        return pickle.load(f)
 
-    def load_obj(self, name ):
-        with open('obj/' + name + '.pkl', 'rb') as f:
-            return pickle.load(f)
+def read_data(path):
+    pass
 
-    def read_data(self, path):
-        pass
-
-    def save_data(self, df):
-        pass
+def save_data(df):
+    pass
 
 
 if __name__ == "__main__":
