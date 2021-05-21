@@ -1,5 +1,8 @@
-from DataConverter import DataConverter
-from Utility import Utility
+import sys
+sys.path.append("..")
+
+from data_converter.DataConverter import DataConverter
+from data_converter.Utility import Utility
 import time
 
 def main():
@@ -19,7 +22,7 @@ def main():
     dc = DataConverter()
 
     # setting up global variables such paths and build version
-    input_path = "29531354-GCST006910-EFO_1001976.h.tsv.gz"
+    input_path = "data/29531354-GCST006910-EFO_1001976.h.tsv.gz"
     output_path = "result"
 
     print("start reading data")
@@ -49,7 +52,8 @@ def main():
     print("start getting required info from dbSnp153")
     C = time.time()
     ut = Utility()
-    dbSnp153 = ut.query_data(sorted_df, "dbSnp153.bb")
+    dbSnp153 = ut.query_data(sorted_df, "../dbSnp153.bb")
+    ut.save_obj("stroke_dbSNp153")
     print("end querying")
     E = time.time()
 

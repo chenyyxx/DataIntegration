@@ -1,5 +1,5 @@
-from DataConverter import DataConverter
-from Utility import Utility
+from data_converter.DataConverter import DataConverter
+from data_converter.Utility import Utility
 
 def main():
     """
@@ -18,8 +18,8 @@ def main():
     dc = DataConverter()
 
     # setting up global variables such paths and build version
-    input_path = "29531354-GCST006910-EFO_1001976.h.tsv.gz"
-    reference_path = "finngen_R4_AB1_ARTHROPOD.gz"
+    input_path = "data/29531354-GCST006910-EFO_1001976.h.tsv.gz"
+    reference_path = "data/finngen_R4_AB1_ARTHROPOD.gz"
     output_path = "result"
     input_format = "hg19"
     output_format = "hg38"
