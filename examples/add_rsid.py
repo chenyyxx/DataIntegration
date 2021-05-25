@@ -1,10 +1,12 @@
-import sys
-sys.path.append("..")
+# import sys
+# sys.path.append("..")
 
 
-from data_converter import DataConverter as dc
-from data_converter import Utility as ut
+# from data_converter import DataConverter as dc
+# from data_converter import Utility as ut
 import time
+from dataconverter.DataConverter import *
+# import DataConverter as dc
 
 def main():
     """

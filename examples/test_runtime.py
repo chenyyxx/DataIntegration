@@ -1,12 +1,15 @@
-from DataConverter import DataConverter
-from Utility import Utility
+import sys
+sys.path.append("..")
+
+from data_converter import DataConverter as dc
+from data_converter import Utility as ut
 import time
 
 
 def main():
     # create DataConverter() instance
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    dc = DataConverter()
+    # dc = DataConverter()
 
     # setting up global variables such paths and build version
     # input_path = "29531354-GCST006910-EFO_1001976.h.tsv.gz"

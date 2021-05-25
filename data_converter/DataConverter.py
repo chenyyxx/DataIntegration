@@ -4,49 +4,35 @@ import pandas as pd
 from pyliftover import LiftOver
 import io
 import os
-import mysql.connector
 import pyBigWig
 import pickle
 import time
 
 
 
-# function to filter only bi-allelic case
-# improve the time efficiency of the old filter bi-allelic function
-def filter_bi_allelic( df, rest=False):
-    len_mask = (df['A1'].str.len() == 1) & (df['A2'].str.len() == 1)
-    val_mask = (df['A1'] != "I") & (df['A1'] != "D") & (df['A1'] != "R") & (df['A2'] != "I") & (df['A2'] != "D") & (df['A2'] != "R")
-    mask = len_mask & val_mask
-    if not rest:
-        result = df[mask].reset_index(drop=True)
-        return result
-    else:
-        result = df[~mask].reset_index(drop=True)
-        return result
 
-def deduplicate( df):
-    result = df.drop_duplicates(subset=['Chr', 'BP'], keep=False)
-    return result
-# function to read data for process
 
-def read_data( input_path, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name, separate_by="\t"):
-    """Example function with types documented in the docstring.
-
-    `PEP 484`_ type annotations are supported. If attribute, parameter, and
-    return types are annotated according to `PEP 484`_, they do not need to be
-    included in the docstring:
+"""Function to read and format data for process
 
     Args:
-        param1 (int): The first parameter.
-        param2 (str): The second parameter.
+        input_path (str): The path of the input data.
+        Chr_col_name (str): The name of the column in the input data representing chromosome name.
+        BP_col_name (str): The name of the column in the input data representing base pair position.
+        SNP_col_name (str): The name of the column in the input data representing rs ID.
+        A1_col_name (str): The name of the column in the input data representing effect allele.
+        A2_col_name (str): The name of the column in the input data representing non-effect allele.
+        EAF_col_name (str): The name of the column in the input data representing effect size.
+        Beta_col_name (str): The name of the column in the input data representing beta.
+        Se_col_name (str): The name of the column in the input data representing standard deviation.
+        P_col_name (str): The name of the column in the input data representing p-value.
+        separate_by (str): How the input data is separated. Default to "\t" (tab separated).
 
     Returns:
-        bool: The return value. True for success, False otherwise.
+        pandas.Data.Frame: return formatted data in the form of pandas Data.Frame
 
-    .. _PEP 484:
-        https://www.python.org/dev/peps/pep-0484/
+"""
 
-    """
+def read_data( input_path, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name, separate_by="\t"):
     raw_df = pd.read_csv(input_path, compression='gzip', header=0, sep=separate_by,quotechar='"')
     # print(raw_df)
     result = raw_df.loc[:,[Chr_col_name, BP_col_name, SNP_col_name, A1_col_name, A2_col_name, EAF_col_name, Beta_col_name, Se_col_name, P_col_name]]
@@ -71,60 +57,196 @@ def read_data( input_path, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name,
     res["SNP"] = res["SNP"].str.lower()
     return res
 
-# function to output data and save as gzip
 
-def save_data( input_path, output_path, df, prefix):
-    name = input_path.split(".")[0]
-    print(name)
 
-    df_out = output_path + "/" + prefix + "_" + name +".gz"
-    try:
-        df.to_csv(df_out, compression='gzip')
-        return "successfully save"
-    except:
-        return "fail to save data"
 
-# helper function for liftover
 
-def create_lo( input_version, output_version):
+"""Function to filter only bi-allelic cases in the data
+
+    Args:
+        df (pandas.Data.Frame): The data frame to be filtered.
+        rest (boolean): value indicating wether or not to keep (mark only) the non-bi-allelic cases. Default to False.
+
+    Returns:
+        pandas.Data.Frame: return filtered data in the form of pandas Data.Frame.
+
+"""
+
+def filter_bi_allelic(df, rest=False):
+    len_mask = (df['A1'].str.len() == 1) & (df['A2'].str.len() == 1)
+    val_mask = (df['A1'] != "I") & (df['A1'] != "D") & (df['A1'] != "R") & (df['A2'] != "I") & (df['A2'] != "D") & (df['A2'] != "R")
+    mask = len_mask & val_mask
+    if not rest:
+        result = df[mask].reset_index(drop=True)
+        return result
+    else:
+        result = df[~mask].reset_index(drop=True)
+        return result
+
+
+
+
+
+
+"""Function to drop rows in data containing dduplicate keys (Chr + BP)
+
+    Args:
+        df (pandas.Data.Frame): The data frame to be deduplicated.
+
+    Returns:
+        pandas.Data.Frame: return filtered data in the form of pandas Data.Frame.
+
+"""
+
+def deduplicate(df):
+    result = df.drop_duplicates(subset=['Chr', 'BP'], keep=False)
+    return result
+
+
+"""Function to sort the data based on Chr and BP
+
+    Args:
+        df (pandas.Data.Frame): the data to be sorted
+    Returns:
+        pandas.Data.Frame: return the sorted data
+"""
+def sort_by_Chr( df):
+    def mixs(v):
+        try:
+            return int(v)
+        except ValueError:
+            return v
+    df = df.assign(chr_numeric = lambda x: x['Chr'].apply(lambda y: 22 if y=="X" else(23 if y=="Y" else int(y))))
+    result = df.sort_values(by=["chr_numeric", "BP"]).drop(['chr_numeric'], axis=1).reset_index(drop=True)
+    return result
+
+
+
+
+"""Function to query required data from dbSnp153
+
+    Args:
+        df (pandas.Data.Frame): the data we want more info
+        link (str): path or link of the '.bb' file of dbSnp153 
+    Returns:
+        pandas.Data.Frame: return complete information from dbSnp153 as a python dictionary
+"""
+# link = "http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"
+
+def query_data(df, link):
+    bb = pyBigWig.open(link)
+    result = {}
+    set_list = []
+    for row in df.itertuples():
+        chrom = "chr" + str(row.Chr)
+        end_pos = row.BP
+        start_pos =end_pos - 1
+        # print(chrom, start_pos, end_pos)
+        dat = bb.entries(chrom, start_pos, end_pos)
+        if dat != None:  
+            for i in dat:
+                reference_start = i[0]
+                reference_end = i[1]
+                raw_string = i[2]
+                if reference_start == start_pos and reference_end == end_pos:
+                    key = (chrom[3:], reference_end)
+                    result[key] = raw_string
+    return result
+
+"""Function to save python data structure on disk
+    Args:
+        obj (obj): the data structure/object to be saved on disk.
+        name (str): the name for the obj to be saved as.
+    Returns:
+        return nothing
+"""
+def save_obj(obj, name ):
+    with open('obj/'+ name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+
+
+
+"""Function to load saved python data structure from disk
+
+    Args:
+        name (str): the name of the saved obj on disk to be loaded
+    Returns:
+        return the loaded object/ data structure
+"""
+def load_obj(name ):
+    with open('obj/' + name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
+
+
+
+
+
+"""Function to save the processed data in gz or csv
+
+    Args:
+        output_path (str): the path you want the data to be saved.
+        df (pandas.Data.Frame): the processed data to be saved.
+        name (str): the output name of the data.
+        save_format (str): the saving format. Choose between 'gzip' or 'csv'. Default to gz.
+    Returns:
+        pandas.Data.Frame: return filtered data in the form of pandas Data.Frame
+
+"""
+
+def save_data(output_path, df, name, save_format="gzip"):
+    if save_format == "gzip":
+        df_out = output_path + "/" + name +".gz"
+        try:
+            df.to_csv(df_out, compression='gzip')
+            return "successfully save"
+        except:
+            return "fail to save data"
+    else: # csv
+        df_out = output_path + "/" + name + ".csv"
+        try:
+            df.to_csv(df_out)
+            return "successfully save"
+        except:
+            return "fail to save data"
+
+
+
+
+
+
+"""Function to create query data for lift over
+
+    Args:
+        input_version (str): the genome build of the original data.
+        output_version (str): the desired genome build you want to lift over to.
+    Returns:
+        python dictionary: return the input version, output version and the liftover chain file.
+
+"""
+
+def create_lo(input_version, output_version):
     lo = LiftOver(input_version, output_version)
     return {"input_version": input_version, "output_version":output_version, "lo":lo}
 
-def __lift_over_basic( df, lo_dict):
-    cols = list(df.columns)
-    temp = []
-    lo = lo_dict["lo"]
-    input_version = lo_dict["input_version"]
-    output_version = lo_dict["output_version"]
-    for row in df.itertuples():
-        chrom = "chr" + str(row.Chr)
-        pos =row.BP
-        modified = lo.convert_coordinate(chrom, pos)
-        # print(i)
-        if modified:
-            new_chrom = modified[0][0][3:]
-            new_pos = modified[0][1]
-            temp.append([chrom[3:], pos, new_chrom, new_pos])
-    new_chr_name = output_version + '_' + 'chr'
-    new_pos_name = output_version + '_' + 'pos'
-    temp_df = pd.DataFrame(temp, columns=["Chr", "BP", new_chr_name, new_pos_name])
-    dtype= {new_chr_name: str, new_pos_name:'Int64'}
-    temp_df.drop_duplicates(subset = ['Chr','BP'], inplace=True)
-    temp_df = temp_df.astype(dtype)
-    return temp_df
 
-# helper function for liftover
 
-def __lift_over_merge( df, reference_table):
-    result = pd.merge(reference_table, df, on=["Chr", "BP"], how="right")
-    return result
 
-# function for liftover
-# the current lift over tool only get the chr + bp in new build version but leave the SNP and A1 A2 unchanged. 
-# Should I also change the SNP and A1 A2 to match the new build version?
-def lift_over( df, lo_dict, keep_unconvertible=False, keep_original_version= False):
-    reference_table = __lift_over_basic(df, lo_dict)
-    result = __lift_over_merge(df, reference_table)
+
+"""Function to lift over genome build
+
+    Args:
+        df (pandas.Data.Frame): the data to be lifted over
+        lo_dict (python dictionary): the lift over dictionary return from the create_lo function
+        keep_unconvertible (boolean): if true, the function will keep and mark the rows that are not convertible. Default to False.
+        keep_original_version (boolean): if true, the function will keep the Chr + BP of original genome build. Default to False.
+    Returns:
+        pandas.Data.Frame: return the data being lifted over to the desired genome build
+"""
+def lift_over(df, lo_dict, keep_unconvertible=False, keep_original_version= False):
+    reference_table = _lift_over_basic(df, lo_dict)
+    result = _lift_over_merge(df, reference_table)
     if not keep_unconvertible:
         new_chr_name = reference_table.columns[2]
         new_pos_name = reference_table.columns[3]
@@ -135,51 +257,19 @@ def lift_over( df, lo_dict, keep_unconvertible=False, keep_original_version= Fal
         result = result[[new_chr_col_name, new_pos_col_name, "SNP", "A1", "A2", "EAF", "Beta", "Se", "P"]].rename({new_chr_col_name:"Chr", new_pos_col_name:"BP"}, axis="columns")
     return result
 
-# function to fill in missing rsid
 
-def query_dat( chro, bp):
-    chrom = "chr" + str(chro)
-    start = bp - 1
-    end = bp
-    bb = pyBigWig.open("dbSnp153.bb")
-    dat = bb.entries(chrom, start, end)
-    result = ""
-    if dat != None:  
-        for i in dat:
-            reference_start = i[0]
-            reference_end = i[1]
-            raw_string = i[2]
-            if reference_start == start and reference_end == end:
-                result = raw_string
-    return result
 
-def new_add_rsid( df):
-    added_rs_id = []
-    for row in df.itertuples():
-        chrom = row.Chr
-        pos = row.BP
-        rs_id = row.SNP
-        raw_string = query_dat(chrom, pos)
-        if raw_string != "":
-            parsed_string = raw_string.split('\t')
-            data_rs_id = parsed_string[0] 
-            if pd.isna(rs_id): # rs_id is absence in original dataset
-                added_rs_id.append(data_rs_id)
-                # print("find none")
-            elif rs_id == data_rs_id: # if rs_id in original dataset is the same as dnSnp153
-                added_rs_id.append(rs_id)
-                # print("same")
-            else: # find different rsid in dbSnp153, update with new
-                added_rs_id.append(data_rs_id)
-                # print("different")
-        else:
-            added_rs_id.append("key not found")
-            # print("key not found")
-    result = df.assign(added_rs_id = added_rs_id)
-    # print(result)
-    return result
 
-def add_rsid( df, data):
+
+"""Function to query and add rs ID for rows missing rsIDs.
+
+    Args:
+        df (pandas.Data.Frame): the data to be added rs_ids
+        data (python dictionary): the dictionary containing required info from dbSnp153
+    Returns:
+        pandas.Data.Frame: return the data being added rs_ids.
+"""
+def add_rsid(df, data):
     added_rs_id = []
     for row in df.itertuples():
         chrom = row.Chr
@@ -207,19 +297,19 @@ def add_rsid( df, data):
     return result
 
 
-def flip( allele):
-    new_allele = ""
-    if allele == "A":
-        new_allele = "T"
-    if allele == "T":
-        new_allele = "A"
-    if allele == "C":
-        new_allele = "G"
-    if allele == "G":
-        new_allele = "C"
-    return new_allele
 
-# function to flip strand
+
+
+"""Function to flip the input data to forward strand
+
+    Args:
+        df (pandas.Data.Frame): the data to be flipped to forward strand
+        data (python dictionary): the dictionary containing required info from dbSnp153
+        keep_unconvertible (boolean): if true, the function will keep and mark the rows that are not flipped. Default to False.
+
+    Returns:
+        pandas.Data.Frame: return the data being flipped to forward strand
+"""
 def flip_strand( df, data, keep_all=False):
     flipped_A1 = []
     flipped_A2 =  []
@@ -242,8 +332,8 @@ def flip_strand( df, data, keep_all=False):
                 cur_set.add(data_a2[0])
                 # print(cur_set)
                 if len(cur_set) == 4: # flip
-                    new_a1 = flip(A1)
-                    new_a2 = flip(A2)
+                    new_a1 = _flip(A1)
+                    new_a2 = _flip(A2)
                     flipped_A1.append(new_a1)
                     flipped_A2.append(new_a2)
                     comment.append("flipped")
@@ -280,10 +370,17 @@ def flip_strand( df, data, keep_all=False):
 
 
 
-# functions to align effect allele and effect size between two datasets
 
-## assuming data set has no problem with consistent effect allele
-## assuming both data set belongs to the same genome version
+"""Function to align effect allele
+    this function will align the effect allele of input data based on a reference data
+
+    Args:
+        reference (pandas.Data.Frame): the reference table
+        df (pandas.Data.Frame): the data to be aligned
+        check_error_rows (boolean): if true, the function will output the rows that cannot be aligned. Default to False.
+    Returns:
+        pandas.Data.Frame: return the data with its effect allele being aligned with the reference table.
+"""
 
 def align_effect_allele( reference, df, check_error_rows=False):
     reference = reference[["Chr", "BP", "A1", "A2"]].rename({"A1":"reference_A1", "A2":"reference_A2"}, axis="columns")
@@ -303,7 +400,7 @@ def align_effect_allele( reference, df, check_error_rows=False):
 
     nochange = pd.merge(df, key_to_nochange, on=["Chr", "BP"], how="inner")
     align = pd.merge(df, key_to_align, on=["Chr", "BP"], how="inner")
-    aligned = swap_effect_allele(align)
+    aligned = _swap_effect_allele(align)
     # print("aligned")
     # print(aligned)
     error = pd.merge(df, key_to_error, on=["Chr", "BP"], how="inner")
@@ -320,11 +417,25 @@ def align_effect_allele( reference, df, check_error_rows=False):
     return sorted_result
         
     
+# ---------------------------------------------------------------------------------------------
+# Helper Functions
 
+# helper function to flip strand for one row
+def _flip( allele):
+    new_allele = ""
+    if allele == "A":
+        new_allele = "T"
+    if allele == "T":
+        new_allele = "A"
+    if allele == "C":
+        new_allele = "G"
+    if allele == "G":
+        new_allele = "C"
+    return new_allele
 
 # helper function to swap effect allele and align effect size
 
-def swap_effect_allele( df):
+def _swap_effect_allele( df):
     col_list = list(df)
     col_list[3], col_list[4] = col_list[4], col_list[3]
     df.columns = col_list
@@ -333,8 +444,39 @@ def swap_effect_allele( df):
     df = df[["Chr", "BP", "SNP", "A1", "A2", "EAF", "Beta", "Se", "P"]]
     return df
 
+# helper function to lift over
+def _lift_over_basic( df, lo_dict):
+    cols = list(df.columns)
+    temp = []
+    lo = lo_dict["lo"]
+    input_version = lo_dict["input_version"]
+    output_version = lo_dict["output_version"]
+    for row in df.itertuples():
+        chrom = "chr" + str(row.Chr)
+        pos =row.BP
+        modified = lo.convert_coordinate(chrom, pos)
+        # print(i)
+        if modified:
+            new_chrom = modified[0][0][3:]
+            new_pos = modified[0][1]
+            temp.append([chrom[3:], pos, new_chrom, new_pos])
+    new_chr_name = output_version + '_' + 'chr'
+    new_pos_name = output_version + '_' + 'pos'
+    temp_df = pd.DataFrame(temp, columns=["Chr", "BP", new_chr_name, new_pos_name])
+    dtype= {new_chr_name: str, new_pos_name:'Int64'}
+    temp_df.drop_duplicates(subset = ['Chr','BP'], inplace=True)
+    temp_df = temp_df.astype(dtype)
+    return temp_df
 
+
+# helper function for liftover
+def _lift_over_merge( df, reference_table):
+    result = pd.merge(reference_table, df, on=["Chr", "BP"], how="right")
+    return result
     
+
+
+
 # ---------------------------------------------------------------------------------------------
 # functions to be implemented
 
@@ -343,24 +485,11 @@ def select( col, value):
 # these can be done with df.query(), no need to write new function.
 # can be put into doc directly
 
-def sort_by_Chr( df):
-    def mixs(v):
-        try:
-            return int(v)
-        except ValueError:
-            return v
-    df = df.assign(chr_numeric = lambda x: x['Chr'].apply(lambda y: 22 if y=="X" else(23 if y=="Y" else int(y))))
-    result = df.sort_values(by=["chr_numeric", "BP"]).drop(['chr_numeric'], axis=1).reset_index(drop=True)
-    return result
-
-
 def insert():
     pass
 
 def delete():
     pass
-
-
 
 
 def create_tbi_index( df):
@@ -371,22 +500,7 @@ def query_db():
 
 # ---------------------------------------------------------------------------------------------
 
-# unsued functions 
-# helper function to connect to gene browser database
-def connect_db():
-    try:
-        db = mysql.connector.connect(
-            user="genome",
-            host="genome-mysql.soe.ucsc.edu",
-            database="hg38",
-            port="3306")
-        return db
-    except:
-        print("connection failed, try another port")
 
-
-
-# ---------------------------------------------------------------------------------------------
 
 
     
@@ -411,41 +525,41 @@ if __name__ == "__main__":
     # TEST CALLS ON Stroke2018NG
     # setting parameters: examples
     # input_path = "29531354-GCST006910-EFO_1001976-build37.f.tsv.gz"
-    input_path = "29531354-GCST006910-EFO_1001976.h.tsv.gz"
-    output_path = "result"
-    input_format = "hg19"
-    output_format = "hg38"
+    # input_path = "29531354-GCST006910-EFO_1001976.h.tsv.gz"
+    # output_path = "result"
+    # input_format = "hg19"
+    # output_format = "hg38"
 
     # create class instance
     # converter = DataConverter(input_path, output_path, input_format,output_format)
-    converter = DataConverter()
+    # converter = DataConverter()
     # df = converter.read_data()
 
     # test call for read_data()
     # df = converter.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
 
-    df = converter.read_data(input_path, "chromosome","base_pair_location", "hm_variant_id" ,"hm_effect_allele", "hm_other_allele", "hm_effect_allele_frequency", "hm_beta", "standard_error", "p_value")
+    # df = converter.read_data(input_path, "chromosome","base_pair_location", "hm_variant_id" ,"hm_effect_allele", "hm_other_allele", "hm_effect_allele_frequency", "hm_beta", "standard_error", "p_value")
     
     # print(new_df)
     # print(df)
     # test call for filter_by_allelic()
-    bi_allelic = converter.filter_bi_allelic(df[:100000])
+    # bi_allelic = converter.filter_bi_allelic(df[:100000])
     # new_bi_allelic = converter.new_bi_allelic(df[:100000])
     # print(bi_allelic)
     # print(new_bi_allelic)
 
-    dedup_bi_allelic = converter.deduplicate(bi_allelic)
+    # dedup_bi_allelic = converter.deduplicate(bi_allelic)
 
-    ut = Utility()
-    E = time.time()
-    data = ut.query_data(bi_allelic, "dbSnp153.bb")
-    F = time.time()
-    print(F-E)
+    # ut = Utility()
+    # E = time.time()
+    # data = ut.query_data(bi_allelic, "dbSnp153.bb")
+    # F = time.time()
+    # print(F-E)
 
-    A = time.time()
-    print(converter.flip_strand(dedup_bi_allelic, data))
-    B = time.time()
-    print(B-A)
+    # A = time.time()
+    # print(converter.flip_strand(dedup_bi_allelic, data))
+    # B = time.time()
+    # print(B-A)
 
     # print(dedup_bi_allelic)
 

@@ -2,8 +2,8 @@ import sys
 sys.path.append("..")
 
 
-from data_converter.DataConverter import DataConverter
-from data_converter.Utility import Utility
+from data_converter import DataConverter as dc
+from data_converter import Utility as ut
 import time
 
 def main():
@@ -20,7 +20,7 @@ def main():
     """
     # create DataConverter() instance
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    dc = DataConverter()
+    # dc = DataConverter()
 
     # setting up global variables such paths and build version
     input_path = "data/finngen_R4_AB1_ARTHROPOD.gz"

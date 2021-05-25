@@ -1,5 +1,8 @@
-from data_converter.DataConverter import DataConverter
-from data_converter.Utility import Utility
+import sys
+sys.path.append("..")
+
+from data_converter import DataConverter as dc
+from data_converter import Utility as ut
 
 def main():
     """
@@ -15,7 +18,7 @@ def main():
     """
     # create DataConverter() instance
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    dc = DataConverter()
+    # dc = DataConverter()
 
     # setting up global variables such paths and build version
     input_path = "data/29531354-GCST006910-EFO_1001976.h.tsv.gz"
@@ -65,7 +68,7 @@ def main():
     # 6. query dbSnp153 for required information
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start getting required info from dbSnp153")
-    ut = Utility()
+    # ut = Utility()
     dbSnp153 = ut.query_data(sorted_reference, "dbSnp153.bb")
     print("end querying")
 
