@@ -2,11 +2,11 @@
 # sys.path.append("..")
 
 
-# from data_converter import DataConverter as dc
+# from data_converter import DataConverter as di
 # from data_converter import Utility as ut
 import time
-from dataconverter.DataConverter import *
-# import DataConverter as dc
+from dataintegrater import DataIntegrater as di
+# import DataConverter as di
 
 def main():
     """
@@ -22,30 +22,30 @@ def main():
     """
     # create DataConverter() instance
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    # dc = DataConverter()
+    # di = DataConverter()
 
     # setting up global variables such paths and build version
     input_path = "data/finngen_R4_AB1_ARTHROPOD.gz"
     output_path = "result"
 
     print("start reading data")
-    df = dc.read_data(input_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
+    df = di.read_data(input_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
     print("data successfully read")
 
     # 2. filter biallelic
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start filtering bi-allelic cases")
-    bi_allelic = dc.filter_bi_allelic(df)
+    bi_allelic = di.filter_bi_allelic(df)
 
     # 3. drop duplicates
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start deduplicating")
-    dedup_df = dc.deduplicate(bi_allelic)
+    dedup_df = di.deduplicate(bi_allelic)
 
     # 4. sort
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start sorting")
-    sorted_df = dc.sort_by_Chr(dedup_df)
+    sorted_df = di.sort_by_Chr(dedup_df)
     # print(sorted_df)
 
 
@@ -55,14 +55,14 @@ def main():
     print("start getting required info from dbSnp153")
     C = time.time()
     # ut = Utility()
-    dbSnp153 = ut.query_data(sorted_df, "dbSnp153.bb")
+    dbSnp153 = di.query_data(sorted_df, "data/dbSnp153.bb")
     print("end querying")
     E = time.time()
 
     # 7.3 data processing (e.g.): Add rsID
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start processing data: add rsID")
-    added_rsid = dc.add_rsid(sorted_df, dbSnp153)
+    added_rsid = di.add_rsid(sorted_df, dbSnp153)
     D = time.time()
     print(added_rsid)
     print("Time used:" , D-C)
