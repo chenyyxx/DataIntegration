@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+dataintegrator/DataIntegrator.py
+dataintegrator/__init__.py
+dataintegrator.egg-info/PKG-INFO
+dataintegrator.egg-info/SOURCES.txt
+dataintegrator.egg-info/dependency_links.txt
+dataintegrator.egg-info/requires.txt
+dataintegrator.egg-info/top_level.txt
