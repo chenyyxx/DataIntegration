@@ -80,7 +80,7 @@ Args:
 - separate_by (str): the delimiter of the original data, '\t' by default (tab separated)
 
 Returns:
-- A pandas data frame formatted in the following ways:
+- pandas.Data.Frame: return formatted data in the form of pandas Data.Frame in the following ways:
 
 | Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      |
 | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
@@ -95,13 +95,13 @@ Example Usage:
 Description: function to save the processed data in the tsv form as a gz file
 
 Args:
-- input_path (str): the input path of the original data
-- output_path (str): the path of the output directory
-- df (pandas data.frame): the pandas data.frame to be saved
-- prefix (str): the prefix of the file output name
+- output_path (str): the path you want the data to be saved.
+- df (pandas.Data.Frame): the processed data to be saved.
+- name (str): the output name of the data.
+- save_format (str): the saving format. Choose between 'gzip' or 'csv'. Default to gz.
 
 Returns:
-This function return the status of outputing the file.
+pandas.Data.Frame: return filtered data in the form of pandas Data.Frame
 
 
 Example:
@@ -121,6 +121,15 @@ Example:
 ```
 
 ### Add Rsid's
+Descriptions: Function to query and add rs ID for rows missing rsIDs.
+
+Args:
+- df (pandas.Data.Frame): the data to be added rs_ids
+- data (python dictionary): the dictionary containing required info from dbSnp153
+
+Returns:
+- pandas.Data.Frame: return the data being added rs_ids.
+
 Example:
 ```python
     data = converter.query_data(df)
@@ -128,6 +137,16 @@ Example:
 ```
 
 ### Flip Strand
+Descriptions: Function to flip the input data to forward strand
+
+Args:
+- df (pandas.Data.Frame): the data to be flipped to forward strand
+- data (python dictionary): the dictionary containing required info from dbSnp153
+- keep_unconvertible (boolean): if true, the function will keep and mark the rows that are not flipped. Default to False.
+
+Returns:
+- pandas.Data.Frame: return the data being flipped to forward strand
+
 Example:
 ```python
     data = converter.query_data(df)
@@ -135,6 +154,17 @@ Example:
 ```
 
 ### Align Effect Allele and Effect Size between Two Datasets
+
+Descriptions: this function will align the effect allele of input data based on a reference data
+
+Args:
+- reference (pandas.Data.Frame): the reference table
+- df (pandas.Data.Frame): the data to be aligned
+- check_error_rows (boolean): if true, the function will output the rows that cannot be aligned. Default to False.
+
+Returns:
+- pandas.Data.Frame: return the data with its effect allele being aligned with the reference table.
+
 Example:
 ```python
     print(df)
@@ -142,13 +172,45 @@ Example:
 ```
 
 ### Sort by Chr and BP
+Description: Function to sort the data based on Chr and BP
+
+Args:
+- df (pandas.Data.Frame): the data to be sorted
+
+Returns:
+- pandas.Data.Frame: return the sorted data
+
 Example:
 ```python
     print(df)
     print(converter.swap_effect_allele(df))
 ```
 
-### Filter data by certain criterias
+### Filter bi-allelic
+Description: Function to filter only bi-allelic cases in the data
+
+Args:
+- df (pandas.Data.Frame): The data frame to be filtered.
+- rest (boolean): value indicating wether or not to keep (mark only) the non-bi-allelic cases. Default to False.
+
+Returns:
+- pandas.Data.Frame: return filtered data in the form of pandas Data.Frame.
+
+Example:
+```python
+    print(df)
+    print(converter.swap_effect_allele(df))
+```
+
+### Deduplicate
+Description: Function to drop rows in data containing dduplicate keys (Chr + BP)
+
+Args:
+- df (pandas.Data.Frame): The data frame to be deduplicated.
+
+Returns:
+- pandas.Data.Frame: return filtered data in the form of pandas Data.Frame.
+
 Example:
 ```python
     print(df)
@@ -158,7 +220,7 @@ Example:
 **Functions to be Implemented**
 ### Insert/ Filter/ Delete
 
-### Deduplicate
+
 
 ### Create Tbi Index
 
