@@ -115,6 +115,17 @@ Example:
 ```
 
 ### Lift Over
+Description: Function to lift over genome build
+
+Args:
+- df (pandas.Data.Frame): the data to be lifted over
+- lo_dict (python dictionary): the lift over dictionary return from the create_lo function
+- keep_unconvertible (boolean): if true, the function will keep and mark the rows that are not convertible. Default to False.
+- keep_original_version (boolean): if true, the function will keep the Chr + BP of original genome build. Default to False.
+
+Returns:
+pandas.Data.Frame: return the data being lifted over to the desired genome build
+
 Example:
 ```python
     converter.liftover(df, "Chr", "BP", )
@@ -217,12 +228,57 @@ Example:
     print(converter.swap_effect_allele(df))
 ```
 
+### Query UCSC Database for dbSNP153 info
+Description: Function to query required data from dbSnp153
+
+Args:
+- df (pandas.Data.Frame): the data we want more info
+- link (str): path or link of the '.bb' file of dbSnp153 
+
+Returns:
+- pandas.Data.Frame: return complete information from dbSnp153 as a python dictionary
+
+Example:
+```python
+    print(df)
+    print(converter.swap_effect_allele(df))
+```
+
+### Save Object
+Description: Function to save python data structure on disk
+
+Args:
+- obj (obj): the data structure/object to be saved on disk.
+- name (str): the name for the obj to be saved as.
+
+Returns:
+- return nothing
+
+Example:
+```python
+    print(df)
+    print(converter.swap_effect_allele(df))
+```
+
+### Load Object
+Description: Function to load saved python data structure from disk
+
+Args:
+- name (str): the name of the saved obj on disk to be loaded
+
+Returns:
+- pandas.Data.Frame: return complete information from dbSnp153 as a python dictionary
+
+Example:
+```python
+    print(df)
+    print(converter.swap_effect_allele(df))
+```
+
+
 **Functions to be Implemented**
 ### Insert/ Filter/ Delete
 
-
-
 ### Create Tbi Index
 
-### Query UCSC Database (for previous dnSNP version)
 
