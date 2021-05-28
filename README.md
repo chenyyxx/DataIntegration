@@ -252,14 +252,14 @@ Example:
     lo = create_lo(input_format, output_format) # create chain file as reference for genome-build-lift-over.
 
     # drop unconvertible rows and keep only the result after lift over.
-    lift_over = di.liftover(df, lo)
+    lift_over = di.lift_over(df, lo)
     print(lift_over)
 
     # keep and mark rows that are not convertible
-    lift_over = di.liftover(df, lo, keep_unconvertible=True)
+    lift_over = di.lift_over(df, lo, keep_unconvertible=True)
 
     # keep the original genome build version as separate columns in the data set
-    lift_over = di.liftover(df, lo, keep_orginal_version=True)
+    lift_over = di.lift_over(df, lo, keep_orginal_version=True)
 ```
 
 ### Add Rsid's
