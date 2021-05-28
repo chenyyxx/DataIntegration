@@ -1,9 +1,6 @@
-import sys
-sys.path.append("..")
 
 
-from data_converter import DataConverter as dc
-from data_converter import Utility as ut
+from dataintegrator import DataIntegrator as di
 import time
 
 def main():
@@ -18,49 +15,48 @@ def main():
             7. process the data: add rsid/ align effect allele with reference/ lift over/ flip strand
             8. save data
     """
-    # create DataConverter() instance
-    # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    # dc = DataConverter()
-
     # setting up global variables such paths and build version
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     input_path = "data/finngen_R4_AB1_ARTHROPOD.gz"
     output_path = "result"
     input_format = "hg38"
     output_format = "hg19"
 
+    # 1. Read Data
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start reading data")
-    df = dc.read_data(input_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
+    df = di.read_data(input_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
     print("data successfully read")
 
     # 2. filter biallelic
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start filtering bi-allelic cases")
-    bi_allelic = dc.filter_bi_allelic(df)
+    bi_allelic = di.filter_bi_allelic(df)
 
     # 3. drop duplicates
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start deduplicating")
-    dedup_df = dc.deduplicate(bi_allelic)
+    dedup_df = di.deduplicate(bi_allelic)
 
     # 4. sort
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start sorting")
-    sorted_df = dc.sort_by_Chr(dedup_df)
+    sorted_df = di.sort_by_chr_bp(dedup_df)
     # print(sorted_df)
 
 
 
     # 6. query dbSnp153 for required information
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    print("start getting required info from dbSnp153")
+    print("start getting required info for liftover")
     C = time.time()
-    lo_dict = dc.create_lo(input_format, output_format)
+    lo_dict = di.create_lo(input_format, output_format)
     E = time.time()
 
-    # 7.3 data processing (e.g.): Add rsID
+    # 7 data processing (e.g.): lift over
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start processing data: add rsID")
-    result = dc.lift_over(dedup_df, lo_dict)
+    result = di.lift_over(dedup_df, lo_dict)
     D = time.time()
     print(result)
 

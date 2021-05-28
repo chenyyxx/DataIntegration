@@ -51,7 +51,7 @@ def read_data( input_path, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name,
     dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
     res = res.astype(dtype)
     res["Chr"] = res["Chr"].str.upper()
-    res["Chr"] = res["Chr"].apply(lambda y: "X" if y=="22" else("Y" if y=="23" else y))
+    res["Chr"] = res["Chr"].apply(lambda y: "X" if y=="23" else("Y" if y=="24" else y))
     res["A1"] = res["A1"].str.upper()
     res["A2"] = res["A2"].str.upper()
     res["SNP"] = res["SNP"].str.lower()
@@ -175,7 +175,7 @@ def save_obj(obj, name ):
         return the loaded object/ data structure
 """
 def load_obj(obj_path ):
-    with open(name, 'rb') as f:
+    with open(obj_path, 'rb') as f:
         return pickle.load(f)
 
 
@@ -413,7 +413,7 @@ def save_data(output_path, df, name, save_format="gzip"):
             return "successfully save"
         except:
             return "fail to save data"
-    else if save_format == "csv": # csv
+    elif save_format == "csv": # csv
         df_out = output_path + "/" + name + ".csv"
         try:
             df.to_csv(df_out)

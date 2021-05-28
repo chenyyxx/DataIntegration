@@ -1,12 +1,6 @@
-# import sys
-# sys.path.append("..")
 
-
-# from data_converter import DataConverter as di
-# from data_converter import Utility as ut
 import time
-from dataintegrater import DataIntegrater as di
-# import DataConverter as di
+from dataintegrator import DataIntegrator as di
 
 def main():
     """
@@ -20,19 +14,19 @@ def main():
             7. process the data: add rsid/ align effect allele with reference/ lift over/ flip strand
             8. save data
     """
-    # create DataConverter() instance
-    # ----------------------------------------------------------------------------------------------------------------------------------------------------
-    # di = DataConverter()
 
     # setting up global variables such paths and build version
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     input_path = "data/finngen_R4_AB1_ARTHROPOD.gz"
     output_path = "result"
 
+    # 1. Read Data
+    # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start reading data")
     df = di.read_data(input_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
     print("data successfully read")
 
-    # 2. filter biallelic
+    # 2. Filter Biallelic
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start filtering bi-allelic cases")
     bi_allelic = di.filter_bi_allelic(df)
@@ -45,7 +39,7 @@ def main():
     # 4. sort
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start sorting")
-    sorted_df = di.sort_by_Chr(dedup_df)
+    sorted_df = di.sort_by_chr_bp(dedup_df)
     # print(sorted_df)
 
 
@@ -54,12 +48,14 @@ def main():
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start getting required info from dbSnp153")
     C = time.time()
-    # ut = Utility()
     dbSnp153 = di.query_data(sorted_df, "data/dbSnp153.bb")
+    di.save_obj(dbSnp153, "obj/dbSnp153_finngen")
+    # dbSnp153 = di.load_obj("obj/dbSnp153_finngen.pkl") # once save you can load it
     print("end querying")
     E = time.time()
 
-    # 7.3 data processing (e.g.): Add rsID
+
+    # 7 data processing (e.g.): Add rsID
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start processing data: add rsID")
     added_rsid = di.add_rsid(sorted_df, dbSnp153)
