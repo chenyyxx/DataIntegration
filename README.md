@@ -5,7 +5,7 @@ Data Integration tool set for genetic data
 
 
 
-# Main functions
+# Main functions (create a index and link)
 1. liftover genome build
 Add chr and pos columns according to hg18, hg19 or GRCh38 in the file and then output the other version chr and pos into the new gwas summary statistics. Additional we should check and flag failed chr:pos;
 2. add rsID

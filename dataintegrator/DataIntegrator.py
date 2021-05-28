@@ -110,7 +110,7 @@ def deduplicate(df):
     Returns:
         pandas.Data.Frame: return the sorted data
 """
-def sort_by_Chr( df):
+def sort_by_chr_bp(df):
     def mixs(v):
         try:
             return int(v)
@@ -133,7 +133,7 @@ def sort_by_Chr( df):
 """
 # link = "http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"
 
-def query_data(df, link):
+def query_data(df, link="http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"):
     bb = pyBigWig.open(link)
     result = {}
     set_list = []
@@ -161,7 +161,7 @@ def query_data(df, link):
         return nothing
 """
 def save_obj(obj, name ):
-    with open('obj/'+ name + '.pkl', 'wb') as f:
+    with open(name + '.pkl', 'wb') as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 
@@ -174,8 +174,8 @@ def save_obj(obj, name ):
     Returns:
         return the loaded object/ data structure
 """
-def load_obj(name ):
-    with open('obj/' + name + '.pkl', 'rb') as f:
+def load_obj(obj_path ):
+    with open(name, 'rb') as f:
         return pickle.load(f)
 
 
@@ -183,33 +183,6 @@ def load_obj(name ):
 
 
 
-"""Function to save the processed data in gz or csv
-
-    Args:
-        output_path (str): the path you want the data to be saved.
-        df (pandas.Data.Frame): the processed data to be saved.
-        name (str): the output name of the data.
-        save_format (str): the saving format. Choose between 'gzip' or 'csv'. Default to gz.
-    Returns:
-        pandas.Data.Frame: return filtered data in the form of pandas Data.Frame
-
-"""
-
-def save_data(output_path, df, name, save_format="gzip"):
-    if save_format == "gzip":
-        df_out = output_path + "/" + name +".gz"
-        try:
-            df.to_csv(df_out, compression='gzip')
-            return "successfully save"
-        except:
-            return "fail to save data"
-    else: # csv
-        df_out = output_path + "/" + name + ".csv"
-        try:
-            df.to_csv(df_out)
-            return "successfully save"
-        except:
-            return "fail to save data"
 
 
 
@@ -416,7 +389,47 @@ def align_effect_allele( reference, df, check_error_rows=False):
     print(str(error.shape[0]) + " rows failed to align, dropped from result! Set the check_error_rows flag to True to view them.")
     return sorted_result
         
-    
+
+
+
+        
+"""Function to save the processed data in gz or csv
+
+    Args:
+        output_path (str): the path you want the data to be saved.
+        df (pandas.Data.Frame): the processed data to be saved.
+        name (str): the output name of the data.
+        save_format (str): the saving format. Choose between 'gzip' or 'csv'. Default to gz.
+    Returns:
+        pandas.Data.Frame: return filtered data in the form of pandas Data.Frame
+
+"""
+
+def save_data(output_path, df, name, save_format="gzip"):
+    if save_format == "gzip":
+        df_out = output_path + "/" + name +".gz"
+        try:
+            df.to_csv(df_out, compression='gzip')
+            return "successfully save"
+        except:
+            return "fail to save data"
+    else if save_format == "csv": # csv
+        df_out = output_path + "/" + name + ".csv"
+        try:
+            df.to_csv(df_out)
+            return "successfully save"
+        except:
+            return "fail to save data"
+    else:
+        print("format not accepted, use 'gzip' or 'csv' for the `save_format` argument")
+        return
+
+
+
+
+
+
+
 # ---------------------------------------------------------------------------------------------
 # Helper Functions
 
