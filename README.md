@@ -2,6 +2,9 @@
 Data Integration tool set for genetic data
 
 
+
+
+
 # Main functions
 1. liftover genome build
 Add chr and pos columns according to hg18, hg19 or GRCh38 in the file and then output the other version chr and pos into the new gwas summary statistics. Additional we should check and flag failed chr:pos;
@@ -19,6 +22,10 @@ such as remove SNPs based on hwe pvalue or imputation quality or MAF, delete dup
 use Python to output gz directly and index file if possible
 
 
+
+
+
+
 # Dependencies
 1. pyliftover
     * `pip install pyliftover`
@@ -26,9 +33,7 @@ use Python to output gz directly and index file if possible
     * `pip install numpy`
 3. pandas
     * `pip install pandas`
-4. mysql
-    * `pip install mysql-connector-python`
-5. pyBigWig
+4. pyBigWig
     * `pip install pyBigWig`
 
 
@@ -37,31 +42,50 @@ use Python to output gz directly and index file if possible
 
 # Usage
 To use the pacakge, please follow the steps below:
-1. install dependencies mentioned above
-2. Please make sure the system have mysql isntalled
-3. Git clone/ download this repository
-4. cd into the directory
-5. In python, get started with the following steps
+1. Install dependencies mentioned above
+2. Install the package
+    * `pip install dataintegrator`
+3. To use the `query_data()` function, you ahve to provide the link/path to the local dbSnp153.bb downloaded from the UCSC website; otherwise, the function will query the data online instead of querying data from local file (which will significantly reduce the run time).
+4. In python, get started with the following steps
     - ```python 
-        from DataConverter import DataConverter
+        from dataintegrator import DataIntegrater as di
       ```
     - Setting inital parameters: 
-        * input_path
-        * output_path
+        * input_path (the path of the data to be processed)
+        * output_path (the path you want the processed result to be saved to)
         * input_format (e.g. "hg19")
         * output_format (e.g. "hg38")
-    - Create instance of the class with the following code chunk
-        - ```python 
-            converter = DataConverter()
-        ```
+
     - Start using the provided functions, e.g.: 
         - ```python 
-            df = converter.read_data(input_path, '\t', "#chrom","pos", "rsids" ,"alt", "ref", "maf",    "beta", "sebeta", "pval")
-            print(df)
+            input_path = "<path_to_your_data_file>.gz"
+            df = di.read_data(input_path, '\t', "#chrom","pos", "rsids" ,"alt", "ref", "maf",    "beta", "sebeta", "pval")
+            #print(df)
         ```
+5. To view example calls of the main functions, clone this repository and see the `.py` files under the `/examples` directory.
+
+6. Data Integrating work flow:
+    - The general data processing pipe line includes the following five steps:
+        - `read_data >>> clean data >>> (query data from dbSnp153 if needed) >>> process data >>> dave data`
+    - Clean data with the following pipe lines:
+        - `filter bi-allelic cases >>> deduplicate data >>> sort data (recommended)`
+
+
+
+
+
+
+
+
+
+
 
 
 # Functions Provided
+
+
+
+## 1. Function to read data in formatted ways
 
 ### Read Data
 Description: This function reads the data to be processed and output it in a formatted way
@@ -89,30 +113,125 @@ Returns:
 
 Example Usage:
 ```python
-    df = converter.read_data(input_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
+    input_path = "<path_to_your_data_file>.gz"
+    df = di.read_data(input_path, '\t', "#chrom","pos", "rsids" ,"alt", "ref", "maf",    "beta", "sebeta", "pval")
+    #print(df)
 ```
-### Save Data
-Description: function to save the processed data in the tsv form as a gz file
+
+
+
+
+
+
+
+## 2. Functions to clean data for further processing
+
+### Filter bi-allelic
+Description: Function to filter only bi-allelic cases in the data
 
 Args:
-- output_path (str): the path you want the data to be saved.
-- df (pandas.Data.Frame): the processed data to be saved.
-- name (str): the output name of the data.
-- save_format (str): the saving format. Choose between 'gzip' or 'csv'. Default to gz.
+- df (pandas.Data.Frame): The data frame to be filtered.
+- rest (boolean): value indicating wether or not to keep (mark only) the non-bi-allelic cases. Default to False.
 
 Returns:
-pandas.Data.Frame: return filtered data in the form of pandas Data.Frame
+- pandas.Data.Frame: return filtered data in the form of pandas Data.Frame.
 
+Example:
+```python 
+    bi_allelic = di.filter_bi_allelic(df)
+    
+    # if you want to check the non-bi-allelic cases, use the following command
+    bi_allelic = di.filter_bi_allelic(df, rest=True)
+```
+
+### Deduplicate
+Description: Function to drop rows in data containing dduplicate keys (Chr + BP)
+
+Args:
+- df (pandas.Data.Frame): The data frame to be deduplicated.
+
+Returns:
+- pandas.Data.Frame: return filtered data in the form of pandas Data.Frame.
 
 Example:
 ```python
-    # process data
-    ut = Utility()
-    dbSnp153 = ut.load_obj("dbSnp153")
-    res = converter.add_rsid(df, dbSnp153)
-    # save data to a gz file with file name prefix being add_rsid
-    converter.save_data(res, "add_rsid")
+    deduplicated = di.deduplicate(df)
 ```
+
+### Sort by Chr and BP
+Description: Function to sort the data based on Chr and BP
+
+Args:
+- df (pandas.Data.Frame): the data to be sorted
+
+Returns:
+- pandas.Data.Frame: return the sorted data
+
+Example:
+```python
+    sorted_data = di.sort_by_chr_bp(df)
+```
+
+
+
+
+
+
+## 3. Functions to query data from dbSnp153 for further processing
+
+### Query UCSC Database for dbSNP153 info
+Description: Function to query required data from dbSnp153
+
+Args:
+- df (pandas.Data.Frame): the data we want more info
+- link (str): path or link of the '.bb' file of dbSnp153 
+
+Returns:
+- pandas.Data.Frame: return complete information from dbSnp153 as a python dictionary
+
+Example:
+```python
+    link = "<path_to_your_dbSnp153_path>.bb"
+    dbSnp153 = di.query_data(df, link) # This will usually take longer time
+```
+
+### Save Object
+Description: Function to save python data structure on disk
+
+Args:
+- obj (obj): the data structure/object to be saved on disk.
+- name (str): the name for the obj to be saved as.
+
+Returns:
+- return nothing
+
+Example:
+```python
+    di.save_obj(dbSnp153, "obj/dbSnp153")
+```
+
+### Load Object
+Description: Function to load saved python data structure from disk
+
+Args:
+- name (str): the name of the saved obj on disk to be loaded
+
+Returns:
+- pandas.Data.Frame: return complete information from dbSnp153 as a python dictionary
+
+Example:
+```python
+    dbSnp153 = di.load_obj("obj/dbSnp153.pkl")
+```
+
+
+
+
+
+
+
+
+## 4. Functions to process data
 
 ### Lift Over
 Description: Function to lift over genome build
@@ -128,7 +247,19 @@ pandas.Data.Frame: return the data being lifted over to the desired genome build
 
 Example:
 ```python
-    converter.liftover(df, "Chr", "BP", )
+    input_format = "hg<**>"
+    output_format = "hg<**>"
+    lo = create_lo(input_format, output_format) # create chain file as reference for genome-build-lift-over.
+
+    # drop unconvertible rows and keep only the result after lift over.
+    lift_over = di.liftover(df, lo)
+    print(lift_over)
+
+    # keep and mark rows that are not convertible
+    lift_over = di.liftover(df, lo, keep_unconvertible=True)
+
+    # keep the original genome build version as separate columns in the data set
+    lift_over = di.liftover(df, lo, keep_orginal_version=True)
 ```
 
 ### Add Rsid's
@@ -143,8 +274,7 @@ Returns:
 
 Example:
 ```python
-    data = converter.query_data(df)
-    converter.add_rsid(df, data)
+    added_rsid = di.add_rsid(df, dbSnp153)
 ```
 
 ### Flip Strand
@@ -160,8 +290,10 @@ Returns:
 
 Example:
 ```python
-    data = converter.query_data(df)
-    converter.flip_strand(df, data)
+    flipped = di.flip_strand(df, dbSnp153)
+
+    # If your want to keep and mark the columns that are unable to flip
+    flipped = di.flip_strand(df, dbSnp153, keep_all=True)
 ```
 
 ### Align Effect Allele and Effect Size between Two Datasets
@@ -178,101 +310,36 @@ Returns:
 
 Example:
 ```python
-    print(df)
-    print(converter.swap_effect_allele(df))
+    reference_path = "<path_to_your_reference_data_file>.gz"
+    reference_df = di.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value") # for example
+    aligned = align_effect_allele(reference_df, df) # be sure df and reference_df are using the same genome build, and both data are properlly cleaned!!
+
+    # if you want to see rows that cannot be aligned
+    aligned = align_effect_allele(reference_df, df, check_error_rows=True)
 ```
 
-### Sort by Chr and BP
-Description: Function to sort the data based on Chr and BP
+## 5. Functions to save result
+
+### Save Data
+Description: function to save the processed data in the tsv form as a gz file
 
 Args:
-- df (pandas.Data.Frame): the data to be sorted
+- output_path (str): the path you want the data to be saved.
+- df (pandas.Data.Frame): the processed data to be saved.
+- name (str): the output name of the data.
+- save_format (str): the saving format. Choose between 'gzip' or 'csv'. Default to gz.
 
 Returns:
-- pandas.Data.Frame: return the sorted data
+pandas.Data.Frame: return filtered data in the form of pandas Data.Frame
+
 
 Example:
 ```python
-    print(df)
-    print(converter.swap_effect_allele(df))
-```
+    output_path = "<path_to_your_output_directory>" # "result" for example
+    di.save_data(output_path, aligned, "aligned")
 
-### Filter bi-allelic
-Description: Function to filter only bi-allelic cases in the data
-
-Args:
-- df (pandas.Data.Frame): The data frame to be filtered.
-- rest (boolean): value indicating wether or not to keep (mark only) the non-bi-allelic cases. Default to False.
-
-Returns:
-- pandas.Data.Frame: return filtered data in the form of pandas Data.Frame.
-
-Example:
-```python
-    print(df)
-    print(converter.swap_effect_allele(df))
-```
-
-### Deduplicate
-Description: Function to drop rows in data containing dduplicate keys (Chr + BP)
-
-Args:
-- df (pandas.Data.Frame): The data frame to be deduplicated.
-
-Returns:
-- pandas.Data.Frame: return filtered data in the form of pandas Data.Frame.
-
-Example:
-```python
-    print(df)
-    print(converter.swap_effect_allele(df))
-```
-
-### Query UCSC Database for dbSNP153 info
-Description: Function to query required data from dbSnp153
-
-Args:
-- df (pandas.Data.Frame): the data we want more info
-- link (str): path or link of the '.bb' file of dbSnp153 
-
-Returns:
-- pandas.Data.Frame: return complete information from dbSnp153 as a python dictionary
-
-Example:
-```python
-    print(df)
-    print(converter.swap_effect_allele(df))
-```
-
-### Save Object
-Description: Function to save python data structure on disk
-
-Args:
-- obj (obj): the data structure/object to be saved on disk.
-- name (str): the name for the obj to be saved as.
-
-Returns:
-- return nothing
-
-Example:
-```python
-    print(df)
-    print(converter.swap_effect_allele(df))
-```
-
-### Load Object
-Description: Function to load saved python data structure from disk
-
-Args:
-- name (str): the name of the saved obj on disk to be loaded
-
-Returns:
-- pandas.Data.Frame: return complete information from dbSnp153 as a python dictionary
-
-Example:
-```python
-    print(df)
-    print(converter.swap_effect_allele(df))
+    # if you want to save the file as csv
+    di.save_data(output_path, aligned, "csv")
 ```
 
 
