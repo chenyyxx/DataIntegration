@@ -61,7 +61,7 @@ def main():
     C = time.time()
     result = di.align_effect_allele(sorted_reference, sorted_df)
     E = time.time()
-    errors = di.align_effect_allele(sorted_reference, sorted_df, check_error_rows=True)
+    errors = di.align_effect_allele(sorted_reference, sorted_df, show_errors=True)
     D = time.time()
     print(result)
     print(errors)

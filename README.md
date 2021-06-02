@@ -270,23 +270,27 @@ Descriptions: Function to query and add rs ID for rows missing rsIDs.
 Args:
 - df (pandas.DataFrame): the data to be added rs_ids
 - data (python dictionary): the dictionary containing required info from dbSnp153
-- dropna (boolean): value indicating whether the function should drop rows where the key (Chr+BP) cannot be matched to an rsID in dbSnp153. Default to True.
+- keep_all (boolean): value indicating whether the function should keep all rows in the original dataset. Default to False.
 - inplace (boolean): value indicating whether the function should replace the original rsID column with the new added_rsid column. Default to True.
 - show_comment (boolean): value indicating whether the function should add a column indicating the status of adding rsID. Default to False.
+- show_errors (boolean): value indicating whether the function will output a table containing rows that cannot be properly added rsIDs. Default to False.
+
     1. "added" : missing rsID in orginal dataset. The Chr+BP key can be found in dbSNP153 and the rsID is successfully added
     2. "same": the original dataset have the same rsID as dbSnp153. No need to modify or add.
     3. "different": the original dataset have different rsID as compared to dbSnp153. Use dbSnp153 153 as reference to repalce the original.
     4. "key not found" : The Chr+BP key in original dataset cannot be found in dbSnp153. Fill in NA value. Mark in the comment column.
+
 Returns:
 - pandas.DataFrame: return the data being added rs_ids.
 
 
-Example:
+Example Call:
 ```python
     added_rsid = di.add_rsid(df, dbSnp153)
 ```
 
 A few example output:
+
 `inplace = False, show_comment=False, keep_all=False`
 | Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      | added_rsid|
 | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | --------- |
@@ -318,7 +322,16 @@ Descriptions: Function to flip the input data to forward strand
 Args:
 - df (pandas.DataFrame): the data to be flipped to forward strand
 - data (python dictionary): the dictionary containing required info from dbSnp153
-- keep_unconvertible (boolean): if true, the function will keep and mark the rows that are not flipped. Default to False.
+- keep_all (boolean): value indicating whether the function should keep all rows in the original dataset. Default to False.
+- inplace (boolean): value indicating whether the function should replace the original A1 and A2 columns with the new_A1 and new_A2 columns. Default to False.
+- show_comment (boolean): value indicating whether the function should add a column indicating the status of flipping strand. Default to False.
+- show_errors (boolean): value indicating whether the function will output a table containing rows where strand cannot be properly flipped. Default to False.
+
+    1. "flipped" : The Chr+BP key can be found in dbSNP153 and the strand is successfully flipped.
+    2. "same": the original dataset uses the same strand as dbSnp153. No need to modify or add.
+    3. "different": the original data set and its correspondence in dbSnp153 show completely different strand patter that cannot be flipped (e.g. T/C vs. C/A)
+    4. "dbSnp153: Indel" : the A1 and A2 in dbSnp153 correponds to the Chr+BP in the processed data set contain Indel
+    5. "key not found" : The Chr+BP key in original dataset cannot be found in dbSnp153. Fill in NA value. Mark in the comment column.
 
 Returns:
 - pandas.DataFrame: return the data being flipped to forward strand
@@ -326,12 +339,10 @@ Returns:
 Example:
 ```python
     flipped = di.flip_strand(df, dbSnp153)
-
-    # If your want to keep and mark the columns that are unable to flip
-    flipped = di.flip_strand(df, dbSnp153, keep_all=True)
 ```
 
 A few examples:
+
 `inplace = False, show_comment=False, keep_all=False`
 | Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      | new_A1 | new_A2 |
 | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
