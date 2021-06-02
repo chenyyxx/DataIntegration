@@ -66,9 +66,9 @@ To use the pacakge, please follow the steps below:
 
 6. Data Integrating work flow:
     - The general data processing pipe line includes the following five steps:
-        - `read_data >>> clean data >>> (query data from dbSnp153 if needed) >>> process data >>> dave data`
+    `read_data >>> clean data >>> (query data from dbSnp153 if needed) >>> process data >>> dave data`
     - Clean data with the following pipe lines:
-        - `filter bi-allelic cases >>> deduplicate data >>> sort data (recommended)`
+    `filter bi-allelic cases >>> deduplicate data >>> sort data (recommended)`
 
 
 
@@ -104,7 +104,7 @@ Args:
 - separate_by (str): the delimiter of the original data, '\t' by default (tab separated)
 
 Returns:
-- pandas.Data.Frame: return formatted data in the form of pandas Data.Frame in the following ways:
+- pandas.DataFrame: return formatted data in the form of pandas DataFrame in the following ways:
 
 | Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      |
 | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
@@ -130,11 +130,11 @@ Example Usage:
 Description: Function to filter only bi-allelic cases in the data
 
 Args:
-- df (pandas.Data.Frame): The data frame to be filtered.
+- df (pandas.DataFrame): The data frame to be filtered.
 - rest (boolean): value indicating wether or not to keep (mark only) the non-bi-allelic cases. Default to False.
 
 Returns:
-- pandas.Data.Frame: return filtered data in the form of pandas Data.Frame.
+- pandas.DataFrame: return filtered data in the form of pandas DataFrame.
 
 Example:
 ```python 
@@ -148,10 +148,10 @@ Example:
 Description: Function to drop rows in data containing dduplicate keys (Chr + BP)
 
 Args:
-- df (pandas.Data.Frame): The data frame to be deduplicated.
+- df (pandas.DataFrame): The data frame to be deduplicated.
 
 Returns:
-- pandas.Data.Frame: return filtered data in the form of pandas Data.Frame.
+- pandas.DataFrame: return filtered data in the form of pandas DataFrame.
 
 Example:
 ```python
@@ -162,10 +162,10 @@ Example:
 Description: Function to sort the data based on Chr and BP
 
 Args:
-- df (pandas.Data.Frame): the data to be sorted
+- df (pandas.DataFrame): the data to be sorted
 
 Returns:
-- pandas.Data.Frame: return the sorted data
+- pandas.DataFrame: return the sorted data
 
 Example:
 ```python
@@ -183,11 +183,11 @@ Example:
 Description: Function to query required data from dbSnp153
 
 Args:
-- df (pandas.Data.Frame): the data we want more info
+- df (pandas.DataFrame): the data we want more info
 - link (str): path or link of the '.bb' file of dbSnp153 
 
 Returns:
-- pandas.Data.Frame: return complete information from dbSnp153 as a python dictionary
+- pandas.DataFrame: return complete information from dbSnp153 as a python dictionary
 
 Example:
 ```python
@@ -217,7 +217,7 @@ Args:
 - name (str): the name of the saved obj on disk to be loaded
 
 Returns:
-- pandas.Data.Frame: return complete information from dbSnp153 as a python dictionary
+- pandas.DataFrame: return complete information from dbSnp153 as a python dictionary
 
 Example:
 ```python
@@ -237,13 +237,15 @@ Example:
 Description: Function to lift over genome build
 
 Args:
-- df (pandas.Data.Frame): the data to be lifted over
+- df (pandas.DataFrame): the data to be lifted over
 - lo_dict (python dictionary): the lift over dictionary return from the create_lo function
 - keep_unconvertible (boolean): if true, the function will keep and mark the rows that are not convertible. Default to False.
 - keep_original_version (boolean): if true, the function will keep the Chr + BP of original genome build. Default to False.
 
 Returns:
-pandas.Data.Frame: return the data being lifted over to the desired genome build
+pandas.DataFrame: return the data being lifted over to the desired genome build
+
+Use two tables to illustrate output
 
 Example:
 ```python
@@ -266,27 +268,60 @@ Example:
 Descriptions: Function to query and add rs ID for rows missing rsIDs.
 
 Args:
-- df (pandas.Data.Frame): the data to be added rs_ids
+- df (pandas.DataFrame): the data to be added rs_ids
 - data (python dictionary): the dictionary containing required info from dbSnp153
-
+- dropna (boolean): value indicating whether the function should drop rows where the key (Chr+BP) cannot be matched to an rsID in dbSnp153. Default to True.
+- inplace (boolean): value indicating whether the function should replace the original rsID column with the new added_rsid column. Default to True.
+- show_comment (boolean): value indicating whether the function should add a column indicating the status of adding rsID. Default to False.
+    1. "added" : missing rsID in orginal dataset. The Chr+BP key can be found in dbSNP153 and the rsID is successfully added
+    2. "same": the original dataset have the same rsID as dbSnp153. No need to modify or add.
+    3. "different": the original dataset have different rsID as compared to dbSnp153. Use dbSnp153 153 as reference to repalce the original.
+    4. "key not found" : The Chr+BP key in original dataset cannot be found in dbSnp153. Fill in NA value. Mark in the comment column.
 Returns:
-- pandas.Data.Frame: return the data being added rs_ids.
+- pandas.DataFrame: return the data being added rs_ids.
+
 
 Example:
 ```python
     added_rsid = di.add_rsid(df, dbSnp153)
 ```
 
+A few example output:
+`inplace = False, show_comment=False, keep_all=False`
+| Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      | added_rsid|
+| ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | --------- |
+| 1      | 438956 | <NA>   | G      | A      | 0.0021 | -0.538 | 0.5802 | 0.3533 | rs12445   |
+| X      | 704956 | rs1234 | T      | C      | 0.0242 | 0.1685 | 0.2469 | 0.0843 | rs1234    |
+
+`inplace = True, show_comment=False, keep_all=False`
+| Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      |
+| ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
+| 1      | 438956 | rs12445| G      | A      | 0.0021 | -0.538 | 0.5802 | 0.3533 |
+| X      | 704956 | rs1234 | T      | C      | 0.0242 | 0.1685 | 0.2469 | 0.0843 |
+
+
+`inplace = False, show_comment=True, keep_all=False`
+| Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      | added_rsid| comment|
+| ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | --------- | ------ |
+| 1      | 438956 | <NA>   | G      | A      | 0.0021 | -0.538 | 0.5802 | 0.3533 | rs12445   | "added"|
+| X      | 704956 | rs1234 | T      | C      | 0.0242 | 0.1685 | 0.2469 | 0.0843 | rs1234    | "same" |
+
+`check_errors=True`
+| Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      | added_rsid| comment|
+| ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | --------- | ------ |
+| 1      | 438956 | <NA>   | G      | A      | 0.0021 | -0.538 | 0.5802 | 0.3533 | <NA>      | "key not found"|
+| X      | 704956 | <NA>   | T      | C      | 0.0242 | 0.1685 | 0.2469 | 0.0843 | <NA>      | "key not found" |
+
 ### Flip Strand
 Descriptions: Function to flip the input data to forward strand
 
 Args:
-- df (pandas.Data.Frame): the data to be flipped to forward strand
+- df (pandas.DataFrame): the data to be flipped to forward strand
 - data (python dictionary): the dictionary containing required info from dbSnp153
 - keep_unconvertible (boolean): if true, the function will keep and mark the rows that are not flipped. Default to False.
 
 Returns:
-- pandas.Data.Frame: return the data being flipped to forward strand
+- pandas.DataFrame: return the data being flipped to forward strand
 
 Example:
 ```python
@@ -296,17 +331,46 @@ Example:
     flipped = di.flip_strand(df, dbSnp153, keep_all=True)
 ```
 
+A few examples:
+`inplace = False, show_comment=False, keep_all=False`
+| Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      | new_A1 | new_A2 |
+| ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
+| 1      | 438956 | <NA>   | G      | A      | 0.0021 | -0.538 | 0.5802 | 0.3533 | A      | G      |
+| X      | 704956 | rs1234 | T      | C      | 0.0242 | 0.1685 | 0.2469 | 0.0843 | C      | T      |
+
+`inplace = True, show_comment=False, keep_all=False`
+| Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      |
+| ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
+| 1      | 438956 | <NA>   | A      | G      | 0.0021 | -0.538 | 0.5802 | 0.3533 |
+| X      | 704956 | rs1234 | C      | T      | 0.0242 | 0.1685 | 0.2469 | 0.0843 |
+
+
+`inplace = False, show_comment=True, keep_all=False`
+| Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      | new_A1 | new_A2 | comment|
+| ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
+| 1      | 438956 | <NA>   | G      | A      | 0.0021 | -0.538 | 0.5802 | 0.3533 | G      | A      | "kept original"|
+| 13     | 704956 | <NA>   | T      | C      | 0.0242 | 0.1235 | 0.2469 | 0.0673 | C      | T      | "flipped" |
+| 22     | 568952 | <NA>   | A      | G      | 0.0267 | 0.7485 | 0.7869 | 0.0843 | <NA>   | <NA>   | "key not found" |
+| X      | 274586 | <NA>   | C      | T      | 0.0243 | 0.1357 | 0.2435 | 0.1243 | G      | T      | "different" |
+
+
+`check_errors=True`
+| Chr    | BP     | SNP    | A1     | A2     | EAF    | Beta   | Se     | P      | new_A1 | new_A2 | comment|
+| ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
+| 22     | 568952 | <NA>   | A      | G      | 0.0267 | 0.7485 | 0.7869 | 0.0843 | <NA>   | <NA>   | "key not found" |
+| X      | 274586 | <NA>   | C      | T      | 0.0243 | 0.1357 | 0.2435 | 0.1243 | G      | T      | "different" |
+
 ### Align Effect Allele and Effect Size between Two Datasets
 
 Descriptions: this function will align the effect allele of input data based on a reference data
 
 Args:
-- reference (pandas.Data.Frame): the reference table
-- df (pandas.Data.Frame): the data to be aligned
+- reference (pandas.DataFrame): the reference table
+- df (pandas.DataFrame): the data to be aligned
 - check_error_rows (boolean): if true, the function will output the rows that cannot be aligned. Default to False.
 
 Returns:
-- pandas.Data.Frame: return the data with its effect allele being aligned with the reference table.
+- pandas.DataFrame: return the data with its effect allele being aligned with the reference table.
 
 Example:
 ```python
@@ -325,12 +389,12 @@ Description: function to save the processed data in the tsv form as a gz file
 
 Args:
 - output_path (str): the path you want the data to be saved.
-- df (pandas.Data.Frame): the processed data to be saved.
+- df (pandas.DataFrame): the processed data to be saved.
 - name (str): the output name of the data.
 - save_format (str): the saving format. Choose between 'gzip' or 'csv'. Default to gz.
 
 Returns:
-pandas.Data.Frame: return filtered data in the form of pandas Data.Frame
+pandas.DataFrame: return filtered data in the form of pandas DataFrame
 
 
 Example:
@@ -341,6 +405,8 @@ Example:
     # if you want to save the file as csv
     di.save_data(output_path, aligned, "csv")
 ```
+
+
 
 
 **Functions to be Implemented**
