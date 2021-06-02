@@ -24,6 +24,7 @@ def main():
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start reading data")
     df = di.read_data(input_path, "chromosome","base_pair_location", "variant_id" ,"effect_allele", "other_allele", "effect_allele_frequency", "beta", "standard_error", "p_value")
+    print(df.shape)
     print("data successfully read")
 
     # 2. filter biallelic
@@ -48,18 +49,39 @@ def main():
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start getting required info from dbSnp153")
     C = time.time()
-    dbSnp153 = di.query_data(sorted_df, "data/dbSnp153.bb")
-    di.save_obj(dbSnp153, "obj/dbSnp153_stroke")
-    # dbSnp153 = di.load_obj("obj/dbSnp153_stroke.pkl") # once save you can load it
+    # dbSnp153 = di.query_data(sorted_df, "data/dbSnp153.bb")
+    # di.save_obj(dbSnp153, "obj/dbSnp153_stroke")
+    dbSnp153 = di.load_obj("obj/dbSnp153_stroke.pkl") # once save you can load it
     print("end querying")
     E = time.time()
 
     # 7 data processing (e.g.): flip strand
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start processing data: flip_strand")
-    flipped = di.flip_strand(df, dbSnp153)
+    # flipped = di.flip_strand(sorted_df, dbSnp153)
     D = time.time()
+    # print(flipped)
+
+    # flipped = di.flip_strand(sorted_df, dbSnp153, keep_all=True)
+    # print("keep_all true")
+    # print(flipped)
+
+    # flipped = di.flip_strand(sorted_df, dbSnp153, show_comment=True)
+    # print("comment true")
+    # print(flipped)
+
+    # flipped = di.flip_strand(sorted_df, dbSnp153, inplace=True,)
+    # print("inplace true")
+    # print(flipped)
+
+    # flipped = di.flip_strand(sorted_df, dbSnp153, inplace=True, show_comment=True)
+    # print("comment inplace true")
+    # print(flipped)
+    flipped = di.flip_strand(sorted_df, dbSnp153, show_errors=True)
+    print("show errors true")
     print(flipped)
+
+
     print("Time used:" , D-C)
     print("Time used (query):" , E-C)
     print("Time used (process):" , D-E)

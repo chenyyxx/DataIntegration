@@ -24,6 +24,7 @@ def main():
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start reading data")
     df = di.read_data(input_path, "#chrom","pos", "rsids" ,"alt", "ref", "maf", "beta", "sebeta", "pval")
+    print(df.shape)
     print("data successfully read")
 
     # 2. Filter Biallelic
@@ -48,9 +49,9 @@ def main():
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start getting required info from dbSnp153")
     C = time.time()
-    dbSnp153 = di.query_data(sorted_df, "data/dbSnp153.bb")
-    di.save_obj(dbSnp153, "obj/dbSnp153_finngen")
-    # dbSnp153 = di.load_obj("obj/dbSnp153_finngen.pkl") # once save you can load it
+    # dbSnp153 = di.query_data(sorted_df, "data/dbSnp153.bb")
+    # di.save_obj(dbSnp153, "obj/dbSnp153_finngen")
+    dbSnp153 = di.load_obj("obj/dbSnp153_finngen.pkl") # once save you can load it
     print("end querying")
     E = time.time()
 
@@ -58,9 +59,26 @@ def main():
     # 7 data processing (e.g.): Add rsID
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start processing data: add rsID")
-    added_rsid = di.add_rsid(sorted_df, dbSnp153)
+    # added_rsid = di.add_rsid(sorted_df, dbSnp153)
     D = time.time()
+    # print(added_rsid)
+
+    # added_rsid = di.add_rsid(sorted_df, dbSnp153, show_comment=True)
+    # print("comment true")
+    # print(added_rsid)
+
+    # added_rsid = di.add_rsid(sorted_df, dbSnp153, inplace=True)
+    # print("inplace true")
+    # print(added_rsid)
+
+    # added_rsid = di.add_rsid(sorted_df, dbSnp153, inplace=True, show_comment=True)
+    # print("comment inplace true")
+    # print(added_rsid)
+
+    added_rsid = di.add_rsid(sorted_df, dbSnp153, show_errors=True)
+    print("show_erros true")
     print(added_rsid)
+
     print("Time used:" , D-C)
     print("Time used (query):" , E-C)
     print("Time used (process):" , D-E)
