@@ -26,9 +26,9 @@ setup(
         author_email="ychen1@hsph.harvard.edu",
         license = 'MIT',
         classifiers=classifiers,
-        keywords='Data Integrater',
+        keywords='Data Integrator',
         packages=find_packages(include=['dataintegrator']),
-        install_requires=["pyBigWig","pyliftover","numpy", "pandas"] # add any additional packages that 
+        install_requires=["pyBigWig","pyliftover","numpy", "pandas>=1.0.0"] # add any additional packages that 
         # needs to be installed along with your package. Eg: 'caer'
 
 )
