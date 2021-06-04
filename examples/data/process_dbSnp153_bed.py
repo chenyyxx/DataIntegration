@@ -55,3 +55,6 @@ if __name__ == "__main__":
     # print(result)
     print(len(result))
     save_obj(result, "dbSnp153")
+
+    dbSnp153 = load_obj("dbSnp153")
+    print(len(dbSnp153))
