@@ -48,7 +48,7 @@ To use the pacakge, please follow the steps below:
 3. To use the `query_data()` function, you ahve to provide the link/path to the local dbSnp153.bb downloaded from the UCSC website; otherwise, the function will query the data online instead of querying data from local file (which will significantly reduce the run time).
 4. In python, get started with the following steps
     - ```python 
-        from dataintegrator import DataIntegrater as di
+        from dataintegrator import DataIntegrator as di
       ```
     - Setting inital parameters: 
         * input_path (the path of the data to be processed)
