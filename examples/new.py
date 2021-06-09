@@ -44,7 +44,7 @@ def merge_add_rsid(df):
     for f in onlyfiles[1:]:
         bed = read_dbsnp153(f)
         chr_merge = bed.merge(df, how="inner", left_on=["chrom", "chromStart", "chromEnd"] ,right_on=["Chr", "start", "BP"])
-        result = pd.concat(result, chr_merge)
+        result = pd.concat([result, chr_merge]).reset_index(drop=True)
     
 
 
