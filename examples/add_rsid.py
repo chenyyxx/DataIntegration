@@ -59,7 +59,7 @@ def main():
     # 7 data processing (e.g.): Add rsID
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start processing data: add rsID")
-    # added_rsid = di.add_rsid(sorted_df, dbSnp153)
+    added_rsid = di.add_rsid(sorted_df, dbSnp153)
     D = time.time()
     # print(added_rsid)
 
@@ -75,7 +75,7 @@ def main():
     # print("comment inplace true")
     # print(added_rsid)
 
-    added_rsid = di.add_rsid(sorted_df, dbSnp153, show_errors=True)
+    # added_rsid = di.add_rsid(sorted_df, dbSnp153, show_errors=True)
     print("show_erros true")
     print(added_rsid)
 
