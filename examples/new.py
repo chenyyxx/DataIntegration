@@ -2,6 +2,8 @@ import pandas as pd
 import pickle
 import time
 from dataintegrator import DataIntegrator as di
+from os import listdir
+from os.path import isfile, join
 
 
 
@@ -27,6 +29,26 @@ def main(df,):
         else:
             #mark sth
             pass
+
+def read_dbsnp153(input_path):
+    dtype = dict(chrom="string", chromStart="Int64", chromEnd="Int64", name="string", ref="string", alts="string")
+    df = pd.read_csv(input_path, header=None, sep="\t", usecols=[0, 1,2,3,4,6], names=['chrom', 'chromStart', 'chromEnd', 'name','ref','alts'], dtype=dtype)
+    return df
+
+def merge_add_rsid(df):
+    df["start"] = df.BP - 1
+    mypath="data/dbSnp153"
+    onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+    bed = read_dbsnp153(onlyfiles[0])
+    result = bed.merge(df, how="inner", left_on=["chrom", "chromStart", "chromEnd"] ,right_on=["Chr", "start", "BP"])
+    for f in onlyfiles[1:]:
+        bed = read_dbsnp153(f)
+        chr_merge = bed.merge(df, how="inner", left_on=["chrom", "chromStart", "chromEnd"] ,right_on=["Chr", "start", "BP"])
+        result = pd.concat(result, chr_merge)
+    
+
+
+    return result
 
 def new_add_rsid(df,keep_all=False, inplace=False, show_comment=False, show_errors=False): 
     added_rsid = []
