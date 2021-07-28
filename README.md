@@ -66,6 +66,14 @@ To use the pacakge, please follow the steps below:
 
 6. Data Integrating work flow:
     - The general data processing pipe line includes the following five steps:
+
+    ```sequence
+    Andrew->China: Says Hello
+    Note right of China: China thinks \n about it
+    China-->Andrew: How are you?
+    Andrew->>China: I am good thanks!
+    ```
+
     `read_data >>> clean data >>> (query data from dbSnp153 if needed) >>> process data >>> dave data`
     - Clean data with the following pipe lines:
     `filter bi-allelic cases >>> deduplicate data >>> sort data (recommended)`
