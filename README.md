@@ -65,7 +65,7 @@ To use the pacakge, please follow the steps below:
 5. To view example calls of the main functions, clone this repository and see the `.py` files under the `/examples` directory.
 
 6. Data Integrating work flow:
-    ![Alt text](./mermaid-diagram-20210728025250.png)
+    ![Alt text](./mermaid-diagram-20210728025927.png)
 
 
 
