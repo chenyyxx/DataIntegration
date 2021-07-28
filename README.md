@@ -270,7 +270,7 @@ Parameters:
 - keep_original_version (boolean): if true, the function will keep the Chr + BP of original genome build. Default to False.
 
 Returns:
-pandas.DataFrame: return the data being lifted over to the desired genome build
+- pandas.DataFrame: return the data being lifted over to the desired genome build
 
 Use two tables to illustrate output
 
