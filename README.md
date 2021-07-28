@@ -65,18 +65,8 @@ To use the pacakge, please follow the steps below:
 5. To view example calls of the main functions, clone this repository and see the `.py` files under the `/examples` directory.
 
 6. Data Integrating work flow:
-    - The general data processing pipe line includes the following five steps:
+    ![Alt text](./mermaid-diagram-20210728025250.png)
 
-    ```sequence
-    Andrew->China: Says Hello
-    Note right of China: China thinks \n about it
-    China-->Andrew: How are you?
-    Andrew->>China: I am good thanks!
-    ```
-
-    `read_data >>> clean data >>> (query data from dbSnp153 if needed) >>> process data >>> dave data`
-    - Clean data with the following pipe lines:
-    `filter bi-allelic cases >>> deduplicate data >>> sort data (recommended)`
 
 
 
