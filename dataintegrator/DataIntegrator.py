@@ -55,10 +55,16 @@ def read_data( input_path, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name,
     res["A1"] = res["A1"].str.upper()
     res["A2"] = res["A2"].str.upper()
     res["SNP"] = res["SNP"].str.lower()
+    dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
+    res = res.astype(dtype)
     return res
 
 
-
+def read_formatted_data(input_path):
+    raw_df = pd.read_csv(input_path, compression='gzip', header=0, quotechar='"', index_col=0)
+    dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
+    res = raw_df.astype(dtype)
+    return res
 
 
 """Function to filter only bi-allelic cases in the data
@@ -75,7 +81,8 @@ def read_data( input_path, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name,
 def filter_bi_allelic(df, rest=False):
     len_mask = (df['A1'].str.len() == 1) & (df['A2'].str.len() == 1)
     val_mask = (df['A1'] != "I") & (df['A1'] != "D") & (df['A1'] != "R") & (df['A2'] != "I") & (df['A2'] != "D") & (df['A2'] != "R")
-    mask = len_mask & val_mask
+    chr_mask = df['Chr'].str.isdigit()
+    mask = len_mask & val_mask & chr_mask
     if not rest:
         result = df[mask].reset_index(drop=True)
         return result
@@ -133,24 +140,43 @@ def sort_by_chr_bp(df):
 """
 # link = "http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"
 
-def query_data(df, link="http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"):
+def query_data(df, link="http://hgdownload.soe.ucsc.edu/gbdb/hg19/snp/dbSnp153.bb", print_log = False):
     bb = pyBigWig.open(link)
     result = {}
     set_list = []
-    for row in df.itertuples():
-        chrom = "chr" + str(row.Chr)
+    chrom = ""
+    log = []
+    not_found = 0
+    for row in df.itertuples():       
+        if str(row.Chr) == "23":
+            chrom = "chrX"
+        elif str(row.Chr) == "23":
+            chrom = "chrY"
+        else:
+            chrom = "chr" + str(row.Chr)
         end_pos = row.BP
         start_pos =end_pos - 1
         # print(chrom, start_pos, end_pos)
-        dat = bb.entries(chrom, start_pos, end_pos)
+        try:
+            dat = bb.entries(chrom, start_pos, end_pos)
+        except RuntimeError:
+            log.append((chrom, start_pos, end_pos))
         if dat != None:  
             for i in dat:
                 reference_start = i[0]
                 reference_end = i[1]
                 raw_string = i[2]
                 if reference_start == start_pos and reference_end == end_pos:
-                    key = (chrom[3:], reference_end)
+                    key = (str(row.Chr), reference_end)
                     result[key] = raw_string
+        else:
+            not_found += 1
+    print(not_found, " cannot be found in dbSnp153")
+    if print_log:
+        print("The following Chr + BP cannot be matched with current genome build version")
+        print(log)
+    else:
+        print(len(log), " does not be matched with current genome build")
     return result
 
 """Function to save python data structure on disk
@@ -217,7 +243,7 @@ def create_lo(input_version, output_version):
     Returns:
         pandas.DataFrame: return the data being lifted over to the desired genome build
 """
-def lift_over(df, lo_dict, keep_all=False, inplace= False, comment=False):
+def lift_over(df, lo_dict, keep_all=False, inplace= False):
     reference_table = _lift_over_basic(df, lo_dict)
     result = _lift_over_merge(df, reference_table)
     if not keep_all:
@@ -268,6 +294,7 @@ def add_rsid(df, data, keep_all=False, inplace=False, show_comment=False, show_e
             comment.append("key not found")
     
     result = df.assign(added_rsid = added_rsid)
+
 
     if show_errors:
         if inplace or show_comment or keep_all:
