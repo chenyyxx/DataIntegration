@@ -49,9 +49,9 @@ def main():
     # ----------------------------------------------------------------------------------------------------------------------------------------------------
     print("start getting required info from dbSnp153")
     C = time.time()
-    # dbSnp153 = di.query_data(sorted_df, "data/dbSnp153.bb")
+    dbSnp153 = di.query_data(sorted_df, "data/dbSnp153.bb")
     # di.save_obj(dbSnp153, "obj/dbSnp153_stroke")
-    dbSnp153 = di.load_obj("obj/dbSnp153_stroke.pkl") # once save you can load it
+    # dbSnp153 = di.load_obj("obj/dbSnp153_stroke.pkl") # once save you can load it
     print("end querying")
     E = time.time()
 

@@ -36,16 +36,25 @@ def read_dbsnp153(input_path):
     return df
 
 def merge_add_rsid(df):
-    df["start"] = df.BP - 1
+    new_df = df
+    new_df["start"] = new_df.BP - 1
+    new_df["Chr"] = new_df["Chr"].astype("string")
+    new_df["chrom"] = "chr"+new_df.Chr
+    print(new_df)
     mypath="data/dbSnp153"
     onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
-    bed = read_dbsnp153(onlyfiles[0])
-    result = bed.merge(df, how="inner", left_on=["chrom", "chromStart", "chromEnd"] ,right_on=["Chr", "start", "BP"])
+    # print(onlyfiles)
+    bed = read_dbsnp153(mypath + "/" + onlyfiles[0])
+    print(bed)
+    result = bed.merge(new_df, how="inner", left_on=["chrom", "chromStart", "chromEnd"] ,right_on=["chrom", "start", "BP"])
+    print(result)
     for f in onlyfiles[1:]:
-        bed = read_dbsnp153(f)
-        chr_merge = bed.merge(df, how="inner", left_on=["chrom", "chromStart", "chromEnd"] ,right_on=["Chr", "start", "BP"])
+        bed = read_dbsnp153(mypath + "/" +f)
+        # print(bed)
+        chr_merge = bed.merge(new_df, how="inner", left_on=["chrom", "chromStart", "chromEnd"] ,right_on=["chrom", "start", "BP"])
+        # print(chr_merge)
         result = pd.concat([result, chr_merge]).reset_index(drop=True)
-    
+        print(result)
 
 
     return result
