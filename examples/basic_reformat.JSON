@@ -3,7 +3,7 @@
     "output_path" : "result",
     "input_format" : "hg38",
     "output_format" : "hg19",
-    "output_name" : "basic_reformat_1",
+    "output_name" : "basic_reformat",
     "Chr_col_name" : "#chrom",
     "BP_col_name" : "pos",
     "SNP_col_name" : "rsids",
