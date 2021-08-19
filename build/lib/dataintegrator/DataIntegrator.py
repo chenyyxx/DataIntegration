@@ -55,10 +55,16 @@ def read_data( input_path, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name,
     res["A1"] = res["A1"].str.upper()
     res["A2"] = res["A2"].str.upper()
     res["SNP"] = res["SNP"].str.lower()
+    dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
+    res = res.astype(dtype)
     return res
 
 
-
+def read_formatted_data(input_path):
+    raw_df = pd.read_csv(input_path, compression='gzip', header=0, quotechar='"')
+    dtype = dict(Chr="string", BP='Int64', SNP="string", A1="string", A2="string", EAF=float, Beta=float, Se=float, P=float)
+    res = raw_df.astype(dtype)
+    return res
 
 
 """Function to filter only bi-allelic cases in the data
@@ -75,7 +81,8 @@ def read_data( input_path, Chr_col_name, BP_col_name, SNP_col_name, A1_col_name,
 def filter_bi_allelic(df, rest=False):
     len_mask = (df['A1'].str.len() == 1) & (df['A2'].str.len() == 1)
     val_mask = (df['A1'] != "I") & (df['A1'] != "D") & (df['A1'] != "R") & (df['A2'] != "I") & (df['A2'] != "D") & (df['A2'] != "R")
-    mask = len_mask & val_mask
+    chr_mask = df['Chr'].str.isdigit()
+    mask = len_mask & val_mask & chr_mask
     if not rest:
         result = df[mask].reset_index(drop=True)
         return result
@@ -133,24 +140,43 @@ def sort_by_chr_bp(df):
 """
 # link = "http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"
 
-def query_data(df, link="http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb"):
+def query_data(df, link="http://hgdownload.soe.ucsc.edu/gbdb/hg19/snp/dbSnp153.bb", print_log = False):
     bb = pyBigWig.open(link)
     result = {}
     set_list = []
-    for row in df.itertuples():
-        chrom = "chr" + str(row.Chr)
+    chrom = ""
+    log = []
+    not_found = 0
+    for row in df.itertuples():       
+        if str(row.Chr) == "23":
+            chrom = "chrX"
+        elif str(row.Chr) == "23":
+            chrom = "chrY"
+        else:
+            chrom = "chr" + str(row.Chr)
         end_pos = row.BP
         start_pos =end_pos - 1
         # print(chrom, start_pos, end_pos)
-        dat = bb.entries(chrom, start_pos, end_pos)
+        try:
+            dat = bb.entries(chrom, start_pos, end_pos)
+        except RuntimeError:
+            log.append((chrom, start_pos, end_pos))
         if dat != None:  
             for i in dat:
                 reference_start = i[0]
                 reference_end = i[1]
                 raw_string = i[2]
                 if reference_start == start_pos and reference_end == end_pos:
-                    key = (chrom[3:], reference_end)
+                    key = (str(row.Chr), reference_end)
                     result[key] = raw_string
+        else:
+            not_found += 1
+    print(not_found, " cannot be found in dbSnp153")
+    if print_log:
+        print("The following Chr + BP cannot be matched with current genome build version")
+        print(log)
+    else:
+        print(len(log), " does not be matched with current genome build")
     return result
 
 """Function to save python data structure on disk
@@ -217,14 +243,14 @@ def create_lo(input_version, output_version):
     Returns:
         pandas.DataFrame: return the data being lifted over to the desired genome build
 """
-def lift_over(df, lo_dict, keep_all=False, inplace= False, comment=False):
+def lift_over(df, lo_dict, keep_all=False, inplace= True):
     reference_table = _lift_over_basic(df, lo_dict)
     result = _lift_over_merge(df, reference_table)
     if not keep_all:
         new_chr_name = reference_table.columns[2]
         new_pos_name = reference_table.columns[3]
         result = result.dropna(subset=[new_chr_name]).reset_index(drop=True)
-    if not inplace:
+    if inplace:
         new_chr_col_name = lo_dict['output_version']+"_chr"
         new_pos_col_name = lo_dict['output_version']+"_pos"
         result = result[[new_chr_col_name, new_pos_col_name, "SNP", "A1", "A2", "EAF", "Beta", "Se", "P"]].rename({new_chr_col_name:"Chr", new_pos_col_name:"BP"}, axis="columns")
@@ -242,7 +268,7 @@ def lift_over(df, lo_dict, keep_all=False, inplace= False, comment=False):
     Returns:
         pandas.DataFrame: return the data being added rs_ids.
 """
-def add_rsid(df, data, keep_all=False, inplace=False, show_comment=False, show_errors=False):
+def add_rsid(df, data, select_cols="drop_comments", filter_rows="drop"):
     added_rsid = []
     comment = []
     for row in df.itertuples():
@@ -256,40 +282,40 @@ def add_rsid(df, data, keep_all=False, inplace=False, show_comment=False, show_e
             data_rs_id = parsed_string[0] 
             if pd.isna(rs_id): # rs_id is absence in original dataset
                 added_rsid.append(data_rs_id)
-                comment.append("added")
+                comment.append("A")
             elif rs_id == data_rs_id: # if rs_id in original dataset is the same as dnSnp153
                 added_rsid.append(rs_id)
-                comment.append("same")
+                comment.append("S")
             else: # find different rsid in dbSnp153, update with new
                 added_rsid.append(data_rs_id)
-                comment.append("different")
+                comment.append("D")
         else:
             added_rsid.append(pd.NA)
-            comment.append("key not found")
+            comment.append("NF")
     
     result = df.assign(added_rsid = added_rsid)
+    result = result.assign(comment=comment)
 
-    if show_errors:
-        if inplace or show_comment or keep_all:
-            print("The `show_errors` flag cannot be used with the `inplace`, `comment`, and `keep_all` flags together.")
-            return
-        result = result.assign(comment=comment)
+    # filter rows
+    if filter_rows == "all":
+        result = result
+    elif filter_rows == "errors":
         mask = pd.isna(result["added_rsid"])
         result = result[mask]
-        return result
+    elif filter_rows == "drop":
+        result  = result.dropna(subset=["added_rsid"]).reset_index(drop=True)
+    else:
+        raise ValueError('Illegal argument for filter_rows! Choose among "errors", "all", and "drop".')
 
-    if inplace:
+    # select cols
+    if select_cols == "all":
+        result = result
+    elif select_cols == "inplace":
         result = result[["Chr", "BP" ,"added_rsid", "A1", "A2", "EAF", "Beta", "Se", "P"]].rename({"added_rsid": "SNP"},axis="columns")
-
-    if show_comment:
-        result = result.assign(comment=comment)
-
-
-    if not keep_all:
-        if inplace:
-            result  = result.dropna(subset=["SNP"]).reset_index(drop=True)
-        else:
-            result  = result.dropna(subset=["added_rsid"]).reset_index(drop=True)
+    elif select_cols == "drop_comments":
+        result = result[["Chr", "BP" ,"SNP", "A1", "A2", "EAF", "Beta", "Se", "P", "added_rsid"]]
+    else:
+        raise ValueError('Illegal argument for select_cols! Choose among "inplace", "all", and "drop_comments".')
 
     
 
@@ -310,7 +336,7 @@ def add_rsid(df, data, keep_all=False, inplace=False, show_comment=False, show_e
     Returns:
         pandas.DataFrame: return the data being flipped to forward strand
 """
-def flip_strand( df, data, keep_all=False, inplace = False, show_comment=False, show_errors=False):
+def flip_strand( df, data, select_cols="drop_comments", filter_rows="drop"):
     flipped_A1 = []
     flipped_A2 =  []
     comment = []
@@ -336,53 +362,51 @@ def flip_strand( df, data, keep_all=False, inplace = False, show_comment=False, 
                     new_a2 = _flip(A2)
                     flipped_A1.append(new_a1)
                     flipped_A2.append(new_a2)
-                    comment.append("flipped")
+                    comment.append("F")
                 elif len(cur_set) == 2: # do not flip
                     # print(i)
                     flipped_A1.append(A1)
                     flipped_A2.append(A2)
-                    comment.append("same")
+                    comment.append("S")
                 else: # mark: what is this case? => original data T/C, dbsnp153 C/A: 10  94958283  rs111998500
                     flipped_A1.append(data_a1[0])
                     flipped_A2.append(data_a2[0])
-                    # print(cur_set)
-                    # print(data_a1)
-                    # print(data_a2)
-                    # print(A1)
-                    # print(A2)
-                    comment.append("different")
+                    comment.append("D")
             else: # tri-alleic snps in dbSnp153 -> mark
                 flipped_A1.append(pd.NA)
                 flipped_A2.append(pd.NA)
-                comment.append("dbSnp153: Indel")
+                comment.append("ID")
         else: # key not found
             flipped_A1.append(pd.NA)
             flipped_A2.append(pd.NA)
-            comment.append("Key not found") 
+            comment.append("NF") 
 
     result = df.assign(new_A1 = flipped_A1)
     result = result.assign(new_A2 = flipped_A2)
+    result = result.assign(comment=comment)
 
 
-    if show_errors:
-        if inplace or show_comment or keep_all:
-            print("The `show_errors` flag cannot be used with the `inplace`, `comment`, and `keep_all` flags together.")
-            return
-        result = result.assign(comment=comment)
-        mask = (result["comment"] != "flipped") & (result["comment"] != "same")
+
+    # filter rows
+    if filter_rows == "all":
+        result = result
+    elif filter_rows == "errors":
+        mask = (result["comment"] != "flipped") & (result["comment"] != "same") # needs to have comment here
         result = result[mask]
-        return result
+    elif filter_rows == "drop":
+        result  = result.dropna(subset=["new_A1", "new_A2"]).reset_index(drop=True)
+    else:
+        raise ValueError('Illegal argument for filter_rows! Choose among "errors", "all", and "drop".')
 
-    # print(result)
-    if inplace:
+    # select cols
+    if select_cols == "all":
+        result = result
+    elif select_cols == "inplace":
         result = result[["Chr", "BP" , "new_A1", "new_A2", "EAF", "Beta", "Se", "P"]].rename({"new_A1": "A1", "new_A2":"A2"},axis="columns")
-    if show_comment:
-        result = result.assign(comment=comment)
-    if not keep_all:
-        if inplace:
-            result  = result.dropna(subset=["A1", "A2"]).reset_index(drop=True)
-        else:
-            result  = result.dropna(subset=["new_A1", "new_A2"]).reset_index(drop=True)
+    elif select_cols == "drop_comments":
+        result = result[["Chr", "BP", "A1", "A2", "EAF", "Beta", "Se", "P", "new_A1", "new_A2"]]
+    else:
+        raise ValueError('Illegal argument for select_cols! Choose among "inplace", "all", and "drop_comments".')
 
     return result
 
@@ -399,7 +423,7 @@ def flip_strand( df, data, keep_all=False, inplace = False, show_comment=False, 
     Returns:
         pandas.DataFrame: return the data with its effect allele being aligned with the reference table.
 """
-
+# TODO: to be completed
 def align_effect_allele( reference, df, show_errors=False):
     reference = reference[["Chr", "BP", "A1", "A2"]].rename({"A1":"reference_A1", "A2":"reference_A2"}, axis="columns")
     process = df[["Chr", "BP", "A1", "A2"]].rename({"A1":"process_A1", "A2":"process_A2"}, axis="columns")
@@ -455,7 +479,7 @@ def save_data(output_path, df, name, save_format="gzip"):
     if save_format == "gzip":
         df_out = output_path + "/" + name +".gz"
         try:
-            df.to_csv(df_out, compression='gzip')
+            df.to_csv(df_out, compression='gzip', index=False)
             return "successfully save"
         except:
             return "fail to save data"

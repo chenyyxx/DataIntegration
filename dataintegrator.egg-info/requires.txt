@@ -1,4 +1,4 @@
 pyBigWig
 pyliftover
 numpy
-pandas
+pandas>=1.0.0
