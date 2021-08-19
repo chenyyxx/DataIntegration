@@ -25,10 +25,8 @@ def main():
     # basic format: filter bi-allelic, deduplicate, and sort
     print("start adding rsid")
     flipped_strand = di.flip_strand(df, dbSnp153,
-        keep_all=data["keep_all"], 
-        inplace=data["inplace"], 
-        show_comment=data["show_comment"], 
-        show_errors=data["show_errors"])
+        select_cols=data["select_cols"], 
+        filter_rows=data["filter_rows"])
     D = time.time()
 
     # save result

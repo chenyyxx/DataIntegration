@@ -3,8 +3,6 @@
     "output_path" : "result",
     "output_name" : "added_rsids",
     "dbSnp153_path": "data/dbSnp153.bb",
-    "keep_all": 0,
-    "inplace": 0,
-    "show_comment": 0,
-    "show_errors": 0
+    "select_cols": "drop_comments",
+    "filter_rows": "drop"
 }
