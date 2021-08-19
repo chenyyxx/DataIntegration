@@ -90,3 +90,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    chrom = []
+for i in range(1,25):
+    chrom.append(str(i))

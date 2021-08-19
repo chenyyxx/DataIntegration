@@ -6,51 +6,70 @@ Data Integration tools for genetic data in Python
 
 
 # Primary Functions
-1. Liftover Genome Build
-   
+1. Basic Reformat
+    - Read raw genome data, unify input type, rename columns to standardized format, and drop unnecessary columns
+    - Liftover to desired genome build (i.e. from hg38 -> hg19)
     Given a input genome build version and a output genome build version, liftover the genome build of the input chr:pos pair to the desired version.
-
-2. Add RsID
-   
+    - Deduplication of key consisted of (Chr + BP)
+    Drop all rows containing duplicate keys
+    - Sort the data according to chromosome and base pair position
+2. Advanced Reformat
+    - Add RsID
     Add rsID according to chr and pos position in the data file.
 
-3. Flip Strand to Forward
-   
+   - Flip Strand to Forward
     Step 1: Query dbSnp153 databse to get the two alleles of the forward strand according to chr and pos.
-
     Step 2: Compare the two alleles with the input GWAS summary file, if all ATCG appears, flip the GWAS summary file using the A-T and C-G rule.
 
-4. Align Effect allele 
-   
+   - Align Effect allele: available in the next release
     Input two gwas summary files, then use the first one as reference and make sure the second file has the same effect allele. If the effect allele is changed, the effect size will also be changed accordingly.
+![Alt text](./mermaid-diagram-20210819054154.png)
 
 
 
 
 
 
-# Dependencies
-Before installing the `DataIntegrator` package, the following packages are required to be installed in advance:
-1. pyliftover
-    * `pip install pyliftover`
-2. numpy
-    * `pip install numpy`
-3. pandas
-    * `pip install pandas`
-4. pyBigWig
-    * `pip install pyBigWig`
 
 
+# Getting Started
+### Dependencies
+1. Install dependencies:
+   Before installing the `DataIntegrator` package, the following packages are required to be installed in advance in your environment:
+    - pyliftover
+    `pip install pyliftover`
+    - numpy
+    `pip install numpy`
+    - pandas
+    `pip install pandas`
+    - pyBigWig
+    `pip install pyBigWig`
+    - Install the package
+    `pip install dataintegrator`
+2. Dowload `dbSnp153.bb` (`hg19` version recommended)
+   Data processing including adding missing data and querying database as reference requires fetching data from the UCSC website. You can accomplish this by using the `query_data()` function. The query data function will query the data from a built in link that points to the dbSnp153 hosted on UCSC genome browser, but we recommend downloading the `dbSnp153.bb` file from the UCSC website [(download here)](http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb) to local directory. By doing this, the runtime of `query_data()` will be significantly reduced.
 
-
-
-# Usage
-To use the pacakge, please follow the steps below:
-1. Install dependencies mentioned above
-2. Install the package
-    * `pip install dataintegrator`
-3. To use the `query_data()` function, you have to provide the local path to the `dbSnp153.bb` file downloaded from the UCSC website [(download here)](http://hgdownload.soe.ucsc.edu/gbdb/hg38/snp/dbSnp153.bb); otherwise, the function will query the data online instead of querying data from local file (which will significantly reduce the run time).
-4. In python, get started with the following steps
+### Using the pacakge
+There are two ways to use the packages:
+1. Using the ready-to-use the command line wrappers (cli) with the parameter template (`*.JSON`) in the examples folder
+    - Choose the command line wrapper you want to use.
+    - Fill in the corresponding JSON parameters template, for example (Detailed documentation of each cli wrapper will be listed below):
+    ```JSON
+    {
+        "input_path" : "$your_path_to_input_raw_file",
+        "output_path" : "$your_path_to_output_directory",
+        "output_name" : "$name_of_your_output_file",
+        "dbSnp153_path": "$path_to_your_local_dbSnp153.bb",
+        "select_cols": "$your_choice_of_options_to_select_cols",
+        "filter_rows": "$your_choice_of_options_to_filter_rows"
+    }
+    ```
+    - In your unix/linux command line, start running the program, for example:
+    ```
+       python basic_reformat_cli.py basic_reformat.JSON
+    ```
+    - 
+2. Build your own working pipeline with the function provided by the package in python
     -   ```python 
         from dataintegrator import DataIntegrator as di
         ```
@@ -66,12 +85,19 @@ To use the pacakge, please follow the steps below:
         df = di.read_data(input_path, '\t', "#chrom","pos", "rsids" ,"alt", "ref", "maf",    "beta", "sebeta", "pval")
         #print(df)
         ```
-5. To view example calls of the main functions, clone this repository and see the `.py` files under the `/examples` directory.
-
-6. Data Integrating work flow:
-    ![Alt text](./mermaid-diagram-20210728025927.png)
+3. To view example calls of the main functions, clone this repository and see the `.py` files under the `/tutorial` directory.
 
 
+# Output Code Reference Table
+These codes serve as reference for the codes shown in the comment column of the output file
+| Code | Name             | Explanation                                                                                     |
+|------|------------------|-------------------------------------------------------------------------------------------------|
+|A     |Added             | Sign indicating rs id has been added                                                            |
+|S     |Same              | Sign indicating the rs id/ strand is the same as dbSnp153                                       |
+|D     |Different         | Sign indicating the rs id/ strand is different from dbSnp153                                    |
+|F     |Flipped           | Sign indicating the strand has been filpped                                                     |
+|ID    |Insertion/Deletion| Sign indicating dbSnp153 record contains Insertion/Deletion for the current Chr + BP combination|
+|NF    |Key Not Found     | Sign indicating record in dbSnp153 cannot befound for the current Chr + BP combination          |
 
 
 
@@ -80,10 +106,103 @@ To use the pacakge, please follow the steps below:
 
 
 
+# Command Line (cli) Wrappers Documentation
+1. **basic_reformat_cli.py**
+   This cli should be used with the `basic_reformat.JSON` parameter template. Fill the template with the desired choice of parameters.
+   - Usage
+    ```
+    python basic_reformat_cli.py [*path_to_basic_reformat.JSON*]
+    ```
+   - Require parameters
+    ```JSON
+    {
+        "input_path" : "data/finngen_R4_AB1_ARTHROPOD.gz",
+        "output_path" : "result",
+        "input_format" : "hg38",
+        "output_format" : "hg19",
+        "output_name" : "basic_reformat",
+        "Chr_col_name" : "#chrom",
+        "BP_col_name" : "pos",
+        "SNP_col_name" : "rsids",
+        "A1_col_name" : "alt",
+        "A2_col_name" : "ref", 
+        "EAF_col_name" : "maf",
+        "Beta_col_name" : "beta",
+        "Se_col_name" : "sebeta",
+        "P_col_name" : "pval"
+    }
+    ```
+2. **advanced_reformat_cli.py** (Will be released in the next version)
+   This cli should be used with the `advanced_reformat_cli.JSON` parameter template. Fill the template with the desired choice of parameters.
+   - Usage: the advanced reformat wrapper should be use on the data that has performed basic reformat
+    ```
+    python basic_reformat_cli.py [*path_to_advanced_reformat.JSON*]
+    ```
+   - Require parameters
+    ```JSON
+    {
+        "input_path" : "result/basic_reformat.gz",
+        "output_path" : "result",
+        "output_name" : "added_rsids",
+        "dbSnp153_path": "data/dbSnp153.bb",
+        "select_cols": "drop_comments",
+        "filter_rows": "drop"
+    }
+    ```
+3. **flip_strand_cli.py**
+   This cli should be used with the `flip_strand_cli.JSON` parameter template. Fill the template with the desired choice of parameters.
+   - Usage: the flip strand wrapper should be use on the data that has performed basic reformat
+    ```
+    python basic_reformat_cli.py [*path_to_flip_strand.JSON*]
+    ```
+   - Require parameters
+    ```JSON
+    {
+        "input_path" : "result/basic_reformat.gz",
+        "output_path" : "result",
+        "output_name" : "added_rsids",
+        "dbSnp153_path": "data/dbSnp153.bb",
+        "select_cols": "drop_comments",
+        "filter_rows": "drop"
+    }
+    ```
+    - Notes:
+      - the `select_cols` parameter instruct the program about how the columns of the data should be kept and outputed. Valid choices contain: `"inplace"`, `"drop_comments"`, and `"all"`. 
+        - `"inplace"`: this will tell the program to write the flipped of `A1` and `A2` to the original columns. The original format will be preserved
+        - `"all"`: this will display the columns in the original data and adding the `new_A1` and `new_A2` columns that contain the alleles after flipping strand. Also a `comment` column will be added to indicating the status of flipping strand. Code/Flag can be consulted in the reference table provided above
+        - `"drop_comments"`: this will result in the same output as the `"all"` choice except the comment column is dropped
+      - the `filter_rows` parameter instruct the program about how the rows of the data should be kept and outputed. Valid choices contain: `"drop"`, `"all"`, and `"errors"`.
+        - `"drop"`: drop all rows (cases) where the results cannot be found from the dbSnp153 or the record in dbSnp153 shows that insertion/deletion exists
+        - `"all"`: keep all rows
+        - `"errors"`: only out put the rows that have not been correctly flipped (contain indel or key cannot be found) and have potential problem where the strand in the provided data is different from the strand of dbSnp153
+4. **add_rsid_cli.py**
+   This cli should be used with the `add_rsid_cli.JSON` parameter template. Fill the template with the desired choice of parameters.
+   - Usage: the add rsid wrapper should be use on the data that has performed basic reformat
+    ```
+    python basic_reformat_cli.py [*path_to_add_rsid.JSON*]
+    ```
+   - Require parameters
+    ```JSON
+    {
+        "input_path" : "result/basic_reformat.gz",
+        "output_path" : "result",
+        "output_name" : "added_rsids",
+        "dbSnp153_path": "data/dbSnp153.bb",
+        "select_cols": "drop_comments",
+        "filter_rows": "drop"
+    }
+    ```
+    - Notes:
+      - the `select_cols` parameter instruct the program about how the columns of the data should be kept and outputed. Valid choices contain: `"inplace"`, `"drop_comments"`, and `"all"`. 
+        - `"inplace"`: this will tell the program to add rsid in the original SNP column. The original format will be preserved
+        - `"all"`: this will display the columns in the original data and adding a new `added_rsid` column that contain the result of adding missing columns. Also a `comment` column will be added to indicating the status of adding rsid. Code/Flag can be consulted in the reference table provided above
+        - `"drop_comments"`: this will result in the same output as the `"all"` choice except the comment column is dropped
+      - the `filter_rows` parameter instruct the program about how the rows of the data should be kept and outputed. Valid choices contain: `"drop"`, `"all"`, and `"errors"`.
+        - `"drop"`: drop all rows (cases) where the rows of the `added_rsid` column is `NA`.
+        - `"all"`: keep all rows
+        - `"errors"`: only show rows (cases) where the rows of the `added_rsid` column is `NA`.
 
-
-
-# Functions Provided
+# Functions Documentation
 
 
 

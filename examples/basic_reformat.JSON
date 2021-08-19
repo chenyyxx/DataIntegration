@@ -8,10 +8,9 @@
     "BP_col_name" : "pos",
     "SNP_col_name" : "rsids",
     "A1_col_name" : "alt",
-    "A2_col_name" : "ref",
+    "A2_col_name" : "ref", 
     "EAF_col_name" : "maf",
     "Beta_col_name" : "beta",
     "Se_col_name" : "sebeta",
     "P_col_name" : "pval"
-
 }
