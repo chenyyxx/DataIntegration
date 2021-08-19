@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.0.5' 
+VERSION = '0.1.0' 
 DESCRIPTION = 'Python data processing and formatting tools for gwas summary stats'
 classifiers = [
         'Development Status :: 5 - Production/Stable',
